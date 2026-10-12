@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <rect width="512" height="512" rx="128" fill="#226F80" />
+  <!-- Main Pad -->
+  <path d="M 256 260 C 200 260 170 300 170 340 C 170 380 200 410 230 405 C 245 402 256 392 256 392 C 256 392 267 402 282 405 C 312 410 342 380 342 340 C 342 300 312 260 256 260 Z" fill="#FAFAF7" />
+  <circle cx="256" cy="335" r="42" fill="#3B9797" opacity="0.8" />
+  <!-- Toe 1 -->
+  <ellipse cx="155" cy="225" rx="35" ry="46" transform="rotate(-20 155 225)" fill="#FAFAF7" />
+  <!-- Toe 2 -->
+  <ellipse cx="218" cy="165" rx="36" ry="48" transform="rotate(-6 218 165)" fill="#FAFAF7" />
+  <!-- Toe 3 -->
+  <ellipse cx="294" cy="165" rx="36" ry="48" transform="rotate(6 294 165)" fill="#FAFAF7" />
+  <!-- Toe 4 -->
+  <ellipse cx="357" cy="225" rx="35" ry="46" transform="rotate(20 357 225)" fill="#FAFAF7" />
+</svg>
