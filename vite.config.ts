@@ -9,7 +9,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       injectRegister: 'auto',
-      includeAssets: ['favicon.svg', 'icons/*.png', 'icons/*.svg'],
+      includeAssets: ['favicon.svg', 'favicon.png', 'logo.png', 'icons/*.png', 'icons/*.svg'],
       manifest: {
         name: 'ProwlLog — Community Cat Tracker',
         short_name: 'ProwlLog',

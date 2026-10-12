@@ -35,6 +35,14 @@ describe('PWA Configuration & Offline Operation (Milestone 5)', () => {
 
     expect(fs.existsSync(faviconSvg)).toBe(true);
     expect(fs.statSync(faviconSvg).size).toBeGreaterThan(100);
+
+    const logoPng = path.resolve('public', 'logo.png');
+    const faviconPng = path.resolve('public', 'favicon.png');
+    const appleTouchIcon = path.resolve('public', 'icons', 'apple-touch-icon.png');
+
+    expect(fs.existsSync(logoPng)).toBe(true);
+    expect(fs.existsSync(faviconPng)).toBe(true);
+    expect(fs.existsSync(appleTouchIcon)).toBe(true);
   });
 
   it('guarantees that local CRUD, photos, and sightings function 100% offline without network requests', async () => {

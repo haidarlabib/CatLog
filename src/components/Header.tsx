@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Footprints, Wifi, WifiOff } from 'lucide-react';
+import { Wifi, WifiOff } from 'lucide-react';
 
 interface HeaderProps {
   catCount?: number;
@@ -24,9 +24,13 @@ export const Header: React.FC<HeaderProps> = ({ catCount = 0 }) => {
   return (
     <header className="app-header">
       <div className="brand-wrapper">
-        <div className="brand-logo-icon" aria-hidden="true">
-          <Footprints size={18} />
-        </div>
+        <img
+          src="/logo.png"
+          alt="ProwlLog logo"
+          className="brand-logo-img"
+          width="32"
+          height="32"
+        />
         <div>
           <span className="brand-title">ProwlLog</span>
         </div>

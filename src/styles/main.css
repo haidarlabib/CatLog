@@ -112,6 +112,15 @@ input, select, textarea {
   box-shadow: var(--shadow-sm);
 }
 
+.brand-logo-img {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  box-shadow: var(--shadow-sm);
+  display: block;
+}
+
 .brand-title {
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-bold);
