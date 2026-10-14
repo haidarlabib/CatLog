@@ -18,6 +18,7 @@ import {
   feedingLogRepository 
 } from '../db';
 import { CatPhotoImg } from '../components/CatPhotoImg';
+import { formatBreedLabel, formatAppearanceLabel } from '../config/catAppearance';
 import type { Cat, Sighting, FeedingLog } from '../types';
 
 export const CatDetailPage: React.FC = () => {
@@ -89,10 +90,10 @@ export const CatDetailPage: React.FC = () => {
     try {
       await catRepository.deleteWithCascade(catId);
       navigate('/catalog', {
-        state: { flashMessage: `Profile for "${cat?.name || 'Cat'}" and all related encounters have been deleted.` },
+        state: { flashMessage: `Profil "${cat?.name || 'Kucing'}" dan semua pertemuannya telah dihapus.` },
       });
     } catch {
-      alert('Failed to delete cat profile. Please try again.');
+      alert('Gagal menghapus profil kucing. Silakan coba lagi.');
       setIsDeleting(false);
       setShowDeleteModal(false);
     }
@@ -101,7 +102,7 @@ export const CatDetailPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="page-container" style={{ textAlign: 'center', padding: 'var(--space-12) 0' }}>
-        <p>Loading cat profile...</p>
+        <p>Memuat profil kucing...</p>
       </div>
     );
   }
@@ -113,16 +114,16 @@ export const CatDetailPage: React.FC = () => {
           <div className="empty-state-icon-circle">
             <Sparkles size={28} />
           </div>
-          <h2 className="empty-state-title">Cat Not Found</h2>
+          <h2 className="empty-state-title">Kucing Tidak Ditemukan</h2>
           <p className="empty-state-desc">
-            The cat profile you are looking for does not exist in your local database or has been removed.
+            Profil kucing yang Anda cari tidak ada di penyimpanan lokal atau telah dihapus.
           </p>
           <button
             type="button"
             className="btn-primary"
             onClick={() => navigate('/catalog')}
           >
-            Return to CATalog
+            Kembali ke Katalog
           </button>
         </div>
       </div>
@@ -132,18 +133,18 @@ export const CatDetailPage: React.FC = () => {
   const latestSighting = sightings.length > 0 ? sightings[0] : null;
 
   return (
-    <div className="page-container" id="cat-detail-page">
+    <div className="page-container" id="cat-detail-page" style={{ paddingBottom: 'calc(var(--bottom-nav-height) + 24px)' }}>
       {/* Top Header Navigation */}
       <div className="page-header-row">
         <button
           type="button"
           className="btn-secondary"
           onClick={() => navigate('/catalog')}
-          aria-label="Back to CATalog"
+          aria-label="Kembali ke Katalog"
           style={{ padding: '6px 12px' }}
         >
           <ArrowLeft size={16} />
-          <span>CATalog</span>
+          <span>Katalog</span>
         </button>
 
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -191,24 +192,24 @@ export const CatDetailPage: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <h1 className="page-title" style={{ fontSize: 'var(--font-size-2xl)' }}>{cat.name}</h1>
           <span className="brand-badge">
-            {sightings.length} {sightings.length === 1 ? 'Sighting' : 'Sightings'}
+            {sightings.length} Pertemuan
           </span>
         </div>
 
         <div className="detail-badge-row">
           {cat.breed && cat.breed !== 'unknown' && (
             <span className="detail-tag">
-              <strong>Breed:</strong> {cat.breed}
+              <strong>Ras:</strong> {formatBreedLabel(cat.breed)}
             </span>
           )}
           {cat.coatColors && cat.coatColors.length > 0 && (
             <span className="detail-tag">
-              <strong>Colors:</strong> {cat.coatColors.join(', ')}
+              <strong>Warna:</strong> {cat.coatColors.map(formatAppearanceLabel).join(', ')}
             </span>
           )}
           {cat.patterns && cat.patterns.length > 0 && (
             <span className="detail-tag">
-              <strong>Pattern:</strong> {cat.patterns.join(', ')}
+              <strong>Pola:</strong> {cat.patterns.map(formatAppearanceLabel).join(', ')}
             </span>
           )}
         </div>
@@ -224,7 +225,7 @@ export const CatDetailPage: React.FC = () => {
           <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--color-border-subtle)', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Calendar size={13} />
-              <span>Last seen: {new Date(latestSighting.spottedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+              <span>Terakhir terlihat: {new Date(latestSighting.spottedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
             </span>
             {latestSighting.locationName && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -244,14 +245,14 @@ export const CatDetailPage: React.FC = () => {
           id="btn-add-sighting-cta"
         >
           <Plus size={18} />
-          <span>Add New Sighting</span>
+          <span>Catat Pertemuan Baru</span>
         </Link>
       </div>
 
       {/* Encounter History Section */}
       <div className="timeline-card">
         <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-bold)' }}>
-          Encounter History ({sightings.length})
+          Riwayat Pertemuan ({sightings.length})
         </h2>
 
         {sightings.length > 0 ? (
@@ -271,7 +272,7 @@ export const CatDetailPage: React.FC = () => {
                     <div className="timeline-thumb">
                       <CatPhotoImg
                         photoId={sighting.photoId}
-                        alt="Sighting encounter photo"
+                        alt="Foto pertemuan kucing"
                         className="timeline-thumb"
                       />
                     </div>
@@ -303,7 +304,7 @@ export const CatDetailPage: React.FC = () => {
           </div>
         ) : (
           <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
-            No sightings recorded yet.
+            Belum ada riwayat pertemuan.
           </p>
         )}
       </div>
@@ -313,23 +314,26 @@ export const CatDetailPage: React.FC = () => {
         <div className="timeline-card">
           <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-bold)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Utensils size={16} />
-            <span>Feeding History ({feedingLogs.length})</span>
+            <span>Riwayat Pemberian Makan ({feedingLogs.length})</span>
           </h2>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            {feedingLogs.map((log) => (
-              <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--color-border-subtle)', fontSize: 'var(--font-size-xs)' }}>
-                <div>
-                  <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>
-                    {log.foodType.replace('_', ' ')}
+            {feedingLogs.map((log) => {
+              const foodName = log.foodType === 'wet_food' ? 'Makanan Basah' : log.foodType === 'dry_food' ? 'Makanan Kering' : log.foodType === 'treat' ? 'Camilan' : 'Lainnya';
+              return (
+                <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--color-border-subtle)', fontSize: 'var(--font-size-xs)' }}>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>
+                      {foodName}
+                    </span>
+                    {log.notes && <span style={{ color: 'var(--color-text-muted)', marginLeft: '6px' }}>— {log.notes}</span>}
+                  </div>
+                  <span style={{ color: 'var(--color-text-subtle)' }}>
+                    {new Date(log.fedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </span>
-                  {log.notes && <span style={{ color: 'var(--color-text-muted)', marginLeft: '6px' }}>— {log.notes}</span>}
                 </div>
-                <span style={{ color: 'var(--color-text-subtle)' }}>
-                  {new Date(log.fedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -341,12 +345,12 @@ export const CatDetailPage: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-danger)' }}>
               <AlertTriangle size={22} />
               <h3 id="modal-title" style={{ fontSize: 'var(--font-size-md)', color: 'var(--color-danger)' }}>
-                Delete Cat Profile?
+                Hapus Profil Kucing?
               </h3>
             </div>
             <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
-              Are you sure you want to permanently delete <strong>{cat.name}</strong>?
-              This will remove all {sightings.length} sightings, photos, and feeding logs associated with this cat from your local database.
+              Apakah Anda yakin ingin menghapus <strong>{cat.name}</strong> secara permanen?
+              Tindakan ini akan menghapus semua {sightings.length} pertemuan, foto, dan catatan makanan yang terkait dari penyimpanan lokal Anda.
             </p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: 'var(--space-2)' }}>
               <button
@@ -355,7 +359,7 @@ export const CatDetailPage: React.FC = () => {
                 onClick={() => setShowDeleteModal(false)}
                 disabled={isDeleting}
               >
-                Cancel
+                Batal
               </button>
               <button
                 type="button"
@@ -364,7 +368,7 @@ export const CatDetailPage: React.FC = () => {
                 disabled={isDeleting}
                 id="btn-confirm-delete"
               >
-                {isDeleting ? 'Deleting...' : 'Delete Permanently'}
+                {isDeleting ? 'Menghapus...' : 'Hapus Permanen'}
               </button>
             </div>
           </div>

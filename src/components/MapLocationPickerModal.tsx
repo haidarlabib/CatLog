@@ -2,12 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { X, Check, Navigation, MapPin } from 'lucide-react';
 import { defaultMapConfig } from '../config/mapConfig';
-import { getCurrentDeviceLocation } from '../utils/geo';
+import { getCurrentDeviceLocation, reverseGeocode, formatCoordinates, isValidCoordinates } from '../utils/geo';
 
 interface MapLocationPickerModalProps {
   initialLat: number | null;
   initialLng: number | null;
-  onConfirm: (coords: { latitude: number; longitude: number }) => void;
+  onConfirm: (coords: { latitude: number; longitude: number; address?: string | null }) => void;
   onClose: () => void;
 }
 
@@ -21,43 +21,21 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
 
+  const hasInitialCoords =
+    initialLat !== null &&
+    initialLng !== null &&
+    isValidCoordinates(initialLat, initialLng);
+
   const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(
-    initialLat !== null && initialLng !== null
-      ? { lat: initialLat, lng: initialLng }
-      : null
+    hasInitialCoords ? { lat: initialLat!, lng: initialLng! } : null
   );
+  const [resolvedAddress, setResolvedAddress] = useState<string | null>(null);
+  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!mapContainerRef.current || mapInstanceRef.current) return;
-
-    const startCenter: [number, number] = selectedCoords
-      ? [selectedCoords.lat, selectedCoords.lng]
-      : defaultMapConfig.defaultCenter;
-    const startZoom = selectedCoords ? 15 : defaultMapConfig.defaultZoom;
-
-    // Initialize map
-    const map = L.map(mapContainerRef.current, {
-      center: startCenter,
-      zoom: startZoom,
-      zoomControl: false,
-    });
-
-    // Add Tile Layer with proper attribution
-    L.tileLayer(defaultMapConfig.tileProvider.url, {
-      attribution: defaultMapConfig.tileProvider.attribution,
-      maxZoom: defaultMapConfig.tileProvider.maxZoom,
-      subdomains: defaultMapConfig.tileProvider.subdomains || ['a', 'b', 'c'],
-    }).addTo(map);
-
-    // Zoom control at top-right
-    L.control.zoom({ position: 'topright' }).addTo(map);
-
-    mapInstanceRef.current = map;
-
-    // Pin Icon
-    const pinIcon = L.divIcon({
+  const createPinIcon = () =>
+    L.divIcon({
       className: 'manual-picker-pin-icon',
       html: `
         <div style="
@@ -80,9 +58,49 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       iconAnchor: [17, 34],
     });
 
-    // If initial coordinates exist, place marker
-    if (selectedCoords) {
-      markerRef.current = L.marker([selectedCoords.lat, selectedCoords.lng], { icon: pinIcon }).addTo(map);
+  const resolvePointAddress = async (lat: number, lng: number) => {
+    setIsResolvingAddress(true);
+    try {
+      const addr = await reverseGeocode(lat, lng);
+      setResolvedAddress(addr);
+    } catch {
+      setResolvedAddress(null);
+    } finally {
+      setIsResolvingAddress(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!mapContainerRef.current || mapInstanceRef.current) return;
+
+    const startCenter: [number, number] = hasInitialCoords
+      ? [initialLat!, initialLng!]
+      : defaultMapConfig.defaultCenter;
+    const startZoom = hasInitialCoords ? 17 : defaultMapConfig.defaultZoom;
+
+    // Initialize map
+    const map = L.map(mapContainerRef.current, {
+      center: startCenter,
+      zoom: startZoom,
+      zoomControl: false,
+    });
+
+    // Add Tile Layer with proper attribution
+    L.tileLayer(defaultMapConfig.tileProvider.url, {
+      attribution: defaultMapConfig.tileProvider.attribution,
+      maxZoom: defaultMapConfig.tileProvider.maxZoom,
+      subdomains: defaultMapConfig.tileProvider.subdomains || ['a', 'b', 'c'],
+    }).addTo(map);
+
+    // Zoom control at top-right
+    L.control.zoom({ position: 'topright' }).addTo(map);
+
+    mapInstanceRef.current = map;
+
+    // If initial coordinates exist, place marker and resolve address
+    if (hasInitialCoords) {
+      markerRef.current = L.marker([initialLat!, initialLng!], { icon: createPinIcon() }).addTo(map);
+      resolvePointAddress(initialLat!, initialLng!);
     }
 
     // Map click listener to place or move pin
@@ -91,12 +109,15 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       const lng = Number(e.latlng.lng.toFixed(6));
 
       setSelectedCoords({ lat, lng });
+      setGeoError(null);
 
       if (markerRef.current) {
         markerRef.current.setLatLng([lat, lng]);
       } else {
-        markerRef.current = L.marker([lat, lng], { icon: pinIcon }).addTo(map);
+        markerRef.current = L.marker([lat, lng], { icon: createPinIcon() }).addTo(map);
       }
+
+      resolvePointAddress(lat, lng);
     });
 
     // Force map size invalidation after modal render
@@ -118,39 +139,18 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       setSelectedCoords({ lat: pos.latitude, lng: pos.longitude });
 
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.setView([pos.latitude, pos.longitude], 16);
-
-        const pinIcon = L.divIcon({
-          className: 'manual-picker-pin-icon',
-          html: `
-            <div style="
-              width: 34px;
-              height: 34px;
-              background: #226F80;
-              color: #FFFFFF;
-              border-radius: 50% 50% 50% 0;
-              transform: rotate(-45deg);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              box-shadow: 0 4px 10px rgba(34, 111, 128, 0.4);
-              border: 2px solid #FFFFFF;
-            ">
-              <div style="width: 10px; height: 10px; background: #FFFFFF; border-radius: 50%;"></div>
-            </div>
-          `,
-          iconSize: [34, 34],
-          iconAnchor: [17, 34],
-        });
+        mapInstanceRef.current.setView([pos.latitude, pos.longitude], 17);
 
         if (markerRef.current) {
           markerRef.current.setLatLng([pos.latitude, pos.longitude]);
         } else {
-          markerRef.current = L.marker([pos.latitude, pos.longitude], { icon: pinIcon }).addTo(mapInstanceRef.current);
+          markerRef.current = L.marker([pos.latitude, pos.longitude], { icon: createPinIcon() }).addTo(mapInstanceRef.current);
         }
       }
+
+      resolvePointAddress(pos.latitude, pos.longitude);
     } catch (err: unknown) {
-      const msg = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'GPS unavailable.';
+      const msg = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'GPS tidak tersedia.';
       setGeoError(msg);
     } finally {
       setGeoLoading(false);
@@ -158,8 +158,12 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
   };
 
   const handleConfirm = () => {
-    if (selectedCoords) {
-      onConfirm({ latitude: selectedCoords.lat, longitude: selectedCoords.lng });
+    if (selectedCoords && isValidCoordinates(selectedCoords.lat, selectedCoords.lng)) {
+      onConfirm({
+        latitude: selectedCoords.lat,
+        longitude: selectedCoords.lng,
+        address: resolvedAddress,
+      });
       onClose();
     }
   };
@@ -193,16 +197,16 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
           }}
         >
           <div>
-            <h3 style={{ fontSize: 'var(--font-size-base)', fontWeight: 'bold' }}>Pin Location on Map</h3>
+            <h3 style={{ fontSize: 'var(--font-size-base)', fontWeight: 'bold' }}>Pilih Titik di Peta</h3>
             <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
-              Tap anywhere on the map to place coordinate pin
+              Ketuk peta untuk menandai titik lokasi yang tepat
             </span>
           </div>
           <button
             type="button"
             className="btn-secondary"
             onClick={onClose}
-            aria-label="Close"
+            aria-label="Tutup"
             style={{ padding: '6px' }}
           >
             <X size={16} />
@@ -223,6 +227,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
               display: 'flex',
               flexDirection: 'column',
               gap: '6px',
+              maxWidth: '85%',
             }}
           >
             <button
@@ -239,7 +244,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
               }}
             >
               <Navigation size={13} className={geoLoading ? 'animate-spin' : ''} />
-              <span>{geoLoading ? 'Finding GPS...' : 'Jump to GPS'}</span>
+              <span>{geoLoading ? 'Mencari GPS...' : 'Ke Lokasi GPS'}</span>
             </button>
 
             {geoError && (
@@ -272,27 +277,40 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
             zIndex: 10,
           }}
         >
-          <div>
+          <div style={{ minWidth: 0, flex: 1 }}>
             {selectedCoords ? (
-              <span className="geo-badge">
-                <MapPin size={12} />
-                <span>{selectedCoords.lat.toFixed(4)}, {selectedCoords.lng.toFixed(4)}</span>
-              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
+                <span className="geo-badge" style={{ alignSelf: 'flex-start' }}>
+                  <MapPin size={12} />
+                  <span>{formatCoordinates(selectedCoords.lat, selectedCoords.lng)}</span>
+                </span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--color-text-secondary)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {isResolvingAddress ? 'Mencari alamat...' : resolvedAddress || 'Alamat belum tersedia'}
+                </span>
+              </div>
             ) : (
               <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
-                No location pinned yet
+                Belum ada titik yang ditandai di peta
               </span>
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
             <button
               type="button"
               className="btn-secondary"
               onClick={onClose}
               style={{ fontSize: 'var(--font-size-sm)', padding: '8px 14px' }}
             >
-              Cancel
+              Batal
             </button>
             <button
               type="button"
@@ -303,7 +321,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
               id="btn-confirm-pin"
             >
               <Check size={16} />
-              <span>Confirm Pin</span>
+              <span>Gunakan Titik Ini</span>
             </button>
           </div>
         </div>

@@ -7,6 +7,7 @@ import { PlaceholderPage } from './pages/PlaceholderPage';
 const MapPage = lazy(() => import('./pages/MapPage').then((m) => ({ default: m.MapPage })));
 const CatalogPage = lazy(() => import('./pages/CatalogPage').then((m) => ({ default: m.CatalogPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const AddCatCameraPage = lazy(() => import('./pages/AddCatCameraPage').then((m) => ({ default: m.AddCatCameraPage })));
 const AddCatPage = lazy(() => import('./pages/AddCatPage').then((m) => ({ default: m.AddCatPage })));
 const CatDetailPage = lazy(() => import('./pages/CatDetailPage').then((m) => ({ default: m.CatDetailPage })));
 const EditCatPage = lazy(() => import('./pages/EditCatPage').then((m) => ({ default: m.EditCatPage })));
@@ -50,7 +51,8 @@ export function App() {
             <Route path="settings" element={<SettingsPage />} />
 
             {/* Cat & Sighting Management Routes */}
-            <Route path="cats/new" element={<AddCatPage />} />
+            <Route path="cats/new" element={<AddCatCameraPage />} />
+            <Route path="cats/new/form" element={<AddCatPage />} />
             <Route path="cats/:catId" element={<CatDetailPage />} />
             <Route path="cats/:catId/edit" element={<EditCatPage />} />
             <Route path="cats/:catId/sightings/new" element={<AddSightingPage />} />

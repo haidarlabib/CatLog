@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Search, X, Footprints, Plus, MapPin, Calendar } from 'lucide-react';
 import { catRepository } from '../db';
 import { CatPhotoImg } from '../components/CatPhotoImg';
+import { formatBreedLabel } from '../config/catAppearance';
 import type { CatWithLatestSighting } from '../types';
 
 export const CatalogPage: React.FC = () => {
@@ -32,7 +33,7 @@ export const CatalogPage: React.FC = () => {
 
       setCats(enriched);
     } catch {
-      setErrorMsg('Failed to load cats from local storage.');
+      setErrorMsg('Gagal memuat data kucing dari penyimpanan lokal.');
     } finally {
       setIsLoading(false);
     }
@@ -43,15 +44,15 @@ export const CatalogPage: React.FC = () => {
   }, [searchQuery, loadCats]);
 
   return (
-    <div className="page-container" id="catalog-page">
+    <div className="page-container" id="catalog-page" style={{ paddingBottom: 'calc(var(--bottom-nav-height) + 24px)' }}>
       {/* Title & Counter */}
       <div className="page-header-row">
         <div>
-          <h1 className="page-title">CATalog</h1>
-          <span className="page-subtitle">Your personal feline index</span>
+          <h1 className="page-title">Katalog Kucing</h1>
+          <span className="page-subtitle">Indeks kucing lokal Anda</span>
         </div>
         <span className="brand-badge" id="catalog-count-badge">
-          {cats.length} {cats.length === 1 ? 'Cat' : 'Cats'}
+          {cats.length} Kucing
         </span>
       </div>
 
@@ -61,10 +62,10 @@ export const CatalogPage: React.FC = () => {
         <input
           type="text"
           className="search-input"
-          placeholder="Search by name, breed, or color..."
+          placeholder="Cari kucing berdasarkan nama, ras, atau warna..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          aria-label="Search cats"
+          aria-label="Cari kucing"
           id="catalog-search-input"
         />
         {searchQuery.trim().length > 0 && (
@@ -72,7 +73,7 @@ export const CatalogPage: React.FC = () => {
             type="button"
             className="search-clear-btn"
             onClick={() => setSearchQuery('')}
-            aria-label="Clear search"
+            aria-label="Hapus pencarian"
           >
             <X size={16} />
           </button>
@@ -82,7 +83,7 @@ export const CatalogPage: React.FC = () => {
       {/* Loading State */}
       {isLoading && (
         <div style={{ textAlign: 'center', padding: 'var(--space-8) 0', color: 'var(--color-text-muted)' }}>
-          <p>Loading CATalog...</p>
+          <p>Memuat Katalog Kucing...</p>
         </div>
       )}
 
@@ -99,7 +100,7 @@ export const CatalogPage: React.FC = () => {
           {cats.length > 0 ? (
             <div className="cat-grid" id="catalog-grid">
               {cats.map((cat) => {
-                const breedText = cat.breed && cat.breed !== 'unknown' ? cat.breed : null;
+                const breedText = cat.breed && cat.breed !== 'unknown' ? formatBreedLabel(cat.breed) : null;
                 const formattedDate = cat.latestSighting
                   ? new Date(cat.latestSighting.spottedAt).toLocaleDateString(undefined, {
                       month: 'short',
@@ -117,7 +118,7 @@ export const CatalogPage: React.FC = () => {
                     <div className="cat-card-media">
                       <CatPhotoImg
                         photoId={cat.coverPhotoId}
-                        alt={`Photo of ${cat.name}`}
+                        alt={`Foto ${cat.name}`}
                         className="cat-card-img"
                       />
                     </div>
@@ -158,23 +159,23 @@ export const CatalogPage: React.FC = () => {
               </div>
               {searchQuery.trim().length > 0 ? (
                 <>
-                  <h2 className="empty-state-title">No Matches Found</h2>
+                  <h2 className="empty-state-title">Tidak Ada Kucing yang Cocok</h2>
                   <p className="empty-state-desc">
-                    No cats matching &ldquo;{searchQuery}&rdquo; were found in your local collection.
+                    Tidak ditemukan kucing yang sesuai dengan pencarian &ldquo;{searchQuery}&rdquo;.
                   </p>
                   <button
                     type="button"
                     className="btn-secondary"
                     onClick={() => setSearchQuery('')}
                   >
-                    Clear Search
+                    Hapus Pencarian
                   </button>
                 </>
               ) : (
                 <>
-                  <h2 className="empty-state-title">Your CATalog is Empty</h2>
+                  <h2 className="empty-state-title">Katalog Kucing Masih Kosong</h2>
                   <p className="empty-state-desc">
-                    Every cat you meet and document will be organized here with photos, breed info, and encounter history.
+                    Setiap kucing yang Anda jumpai dan catat akan tersimpan rapi di sini lengkap dengan info dan riwayat pertemuannya.
                   </p>
                   <button
                     type="button"
@@ -183,7 +184,7 @@ export const CatalogPage: React.FC = () => {
                     id="catalog-add-cat-btn"
                   >
                     <Plus size={18} />
-                    <span>Add Your First Cat</span>
+                    <span>Tambah Kucing Pertama</span>
                   </button>
                 </>
               )}

@@ -34,6 +34,11 @@ export interface BackupPhotoMetadata {
   mimeType: string;
   width?: number | null;
   height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+  zoom?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
   createdAt: string;
 }
 
@@ -95,6 +100,11 @@ export class BackupService {
       mimeType: p.mimeType,
       width: p.width,
       height: p.height,
+      focalX: p.focalX ?? 0.5,
+      focalY: p.focalY ?? 0.5,
+      zoom: p.zoom ?? 1.0,
+      latitude: p.latitude ?? null,
+      longitude: p.longitude ?? null,
       createdAt: p.createdAt,
     }));
 
@@ -313,6 +323,11 @@ export class BackupService {
         mimeType: meta.mimeType,
         width: meta.width ?? null,
         height: meta.height ?? null,
+        focalX: meta.focalX ?? 0.5,
+        focalY: meta.focalY ?? 0.5,
+        zoom: meta.zoom ?? 1.0,
+        latitude: meta.latitude ?? null,
+        longitude: meta.longitude ?? null,
         createdAt: meta.createdAt,
       };
     });

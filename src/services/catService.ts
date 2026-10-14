@@ -22,11 +22,17 @@ export interface CreateCatFullInput {
   breed?: string;
   coatColors?: string[];
   patterns?: string[];
+  badgeRing?: string;
   notes?: string;
   photoBlob?: Blob | null;
   photoMimeType?: string;
   photoWidth?: number | null;
   photoHeight?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+  zoom?: number | null;
+  photoLatitude?: number | null;
+  photoLongitude?: number | null;
   latitude?: number | null;
   longitude?: number | null;
   locationName?: string | null;
@@ -43,6 +49,11 @@ export interface AddSightingFullInput {
   photoMimeType?: string;
   photoWidth?: number | null;
   photoHeight?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+  zoom?: number | null;
+  photoLatitude?: number | null;
+  photoLongitude?: number | null;
   latitude?: number | null;
   longitude?: number | null;
   locationName?: string | null;
@@ -59,11 +70,15 @@ export interface UpdateCatProfileInput {
   breed?: string;
   coatColors?: string[];
   patterns?: string[];
+  badgeRing?: string;
   notes?: string;
   newPhotoBlob?: Blob | null;
   newPhotoMimeType?: string;
   newPhotoWidth?: number | null;
   newPhotoHeight?: number | null;
+  newPhotoFocalX?: number | null;
+  newPhotoFocalY?: number | null;
+  newPhotoZoom?: number | null;
 }
 
 export class CatService {
@@ -105,6 +120,7 @@ export class CatService {
             breed: input.breed,
             coatColors: input.coatColors,
             patterns: input.patterns,
+            badgeRing: input.badgeRing,
             notes: input.notes,
           });
 
@@ -117,6 +133,11 @@ export class CatService {
               mimeType: input.photoMimeType || 'image/jpeg',
               width: input.photoWidth,
               height: input.photoHeight,
+              focalX: input.focalX,
+              focalY: input.focalY,
+              zoom: input.zoom,
+              latitude: input.photoLatitude,
+              longitude: input.photoLongitude,
             });
 
             // Set as cover photo on cat profile
@@ -199,6 +220,11 @@ export class CatService {
               mimeType: input.photoMimeType || 'image/jpeg',
               width: input.photoWidth,
               height: input.photoHeight,
+              focalX: input.focalX,
+              focalY: input.focalY,
+              zoom: input.zoom,
+              latitude: input.photoLatitude,
+              longitude: input.photoLongitude,
             });
 
             // Update cover photo if explicitly requested or if cat has no cover photo
@@ -282,6 +308,9 @@ export class CatService {
               mimeType: input.newPhotoMimeType || 'image/jpeg',
               width: input.newPhotoWidth,
               height: input.newPhotoHeight,
+              focalX: input.newPhotoFocalX,
+              focalY: input.newPhotoFocalY,
+              zoom: input.newPhotoZoom,
             });
             newCoverPhotoId = photo.id;
           }
@@ -291,6 +320,7 @@ export class CatService {
             breed: input.breed,
             coatColors: input.coatColors,
             patterns: input.patterns,
+            badgeRing: input.badgeRing,
             notes: input.notes,
             coverPhotoId: newCoverPhotoId,
           });

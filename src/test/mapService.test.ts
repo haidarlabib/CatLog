@@ -136,4 +136,19 @@ describe('MapService & Interactive Map Logic (Milestone 4)', () => {
     createSpy.mockRestore();
     revokeSpy.mockRestore();
   });
+
+  it('includes badgeRing in MapMarkerData when present on cat profile', async () => {
+    await catService.createCatWithFirstSighting({
+      name: 'RingCat',
+      badgeRing: 'Hijau',
+      latitude: -6.18,
+      longitude: 106.83,
+    });
+
+    const markers = await mapService.getMapMarkers();
+    expect(markers.length).toBe(1);
+    expect(markers[0].catName).toBe('RingCat');
+    expect(markers[0].badgeRing).toBe('Hijau');
+  });
 });
+

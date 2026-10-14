@@ -15,6 +15,7 @@ import {
 import { defaultMapConfig } from '../config/mapConfig';
 import { mapService, type MapMarkerData } from '../services/mapService';
 import { getCurrentDeviceLocation } from '../utils/geo';
+import { resolveBadge } from '../config/catAppearance';
 
 export const MapPage: React.FC = () => {
   const navigate = useNavigate();
@@ -61,7 +62,7 @@ export const MapPage: React.FC = () => {
 
       setMarkersData(enriched);
     } catch {
-      setErrorMsg('Failed to load cat sightings onto map.');
+      setErrorMsg('Gagal memuat lokasi kucing ke peta.');
     } finally {
       setIsLoading(false);
     }
@@ -141,22 +142,32 @@ export const MapPage: React.FC = () => {
       const isSelected = selectedMarker?.sightingId === marker.sightingId;
       latLngBounds.push([marker.latitude, marker.longitude]);
 
+      const badge = resolveBadge(marker.badgeRing);
+      const focalX = marker.focalX ?? 0.5;
+      const focalY = marker.focalY ?? 0.5;
+      const zoom = marker.zoom ?? 1.0;
+      const objectPosition = `${(focalX * 100).toFixed(1)}% ${(focalY * 100).toFixed(1)}%`;
+      const transform = zoom > 1.001 ? `transform: scale(${zoom.toFixed(2)}); transform-origin: ${objectPosition};` : '';
+
       const photoContent = marker.photoUrl
-        ? `<img src="${marker.photoUrl}" alt="${marker.catName}" />`
-        : `<div class="fallback-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4-3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4 3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm-9 4c-3 0-5 2-5 5 0 2 2 3 5 3s5-1 5-3c0-3-2-5-5-5z"/></svg></div>`;
+        ? `<img src="${marker.photoUrl}" alt="${marker.catName}" style="object-position: ${objectPosition}; ${transform}" />`
+        : `<div class="fallback-icon" style="color: ${badge.hex}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4-3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4 3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm-9 4c-3 0-5 2-5 5 0 2 2 3 5 3s5-1 5-3c0-3-2-5-5-5z"/></svg></div>`;
 
       const customIcon = L.divIcon({
         className: 'cat-map-marker-container',
         html: `
           <div class="cat-photo-marker-pin ${isSelected ? 'selected' : ''}" id="marker-${marker.sightingId}">
-            <div class="cat-photo-marker-circle">
-              ${photoContent}
+            <div class="cat-photo-marker-frame-wrap">
+              <div class="cat-photo-marker-inner-circle">
+                ${photoContent}
+              </div>
+              <img class="cat-photo-marker-badge-img" src="${badge.assetPath}" alt="${badge.nickname}" />
             </div>
-            <div class="cat-photo-marker-arrow"></div>
+            <div class="cat-photo-marker-arrow" style="border-top-color: ${badge.hex};"></div>
           </div>
         `,
-        iconSize: [46, 52],
-        iconAnchor: [23, 52],
+        iconSize: [50, 56],
+        iconAnchor: [25, 56],
       });
 
       const leafletMarker = L.marker([marker.latitude, marker.longitude], {
@@ -220,10 +231,10 @@ export const MapPage: React.FC = () => {
         userMarkerRef.current.setLatLng([pos.latitude, pos.longitude]);
       }
 
-      setGeoNotice(`Centered to your location (±${pos.accuracy}m)`);
+      setGeoNotice(`Lokasi terpusat ke posisi Anda (±${pos.accuracy}m)`);
       setTimeout(() => setGeoNotice(null), 3500);
     } catch (err: unknown) {
-      const msg = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Location unavailable.';
+      const msg = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Lokasi tidak tersedia.';
       setGeoNotice(msg);
       setTimeout(() => setGeoNotice(null), 4000);
     } finally {
@@ -243,9 +254,9 @@ export const MapPage: React.FC = () => {
           className="map-my-location-btn"
           onClick={handleCenterOnUser}
           disabled={geoLoading}
-          aria-label="Center map on my location"
+          aria-label="Pusatkan ke lokasi saya"
           id="btn-map-my-location"
-          title="Center on my location"
+          title="Pusatkan ke lokasi saya"
         >
           <Navigation size={18} className={geoLoading ? 'animate-spin' : ''} />
         </button>
@@ -312,7 +323,7 @@ export const MapPage: React.FC = () => {
           >
             <WifiOff size={16} style={{ color: 'var(--color-coral)', flexShrink: 0 }} />
             <span style={{ color: 'var(--color-text-main)', fontSize: 'var(--font-size-xs)' }}>
-              Offline mode: Map tiles cannot be fetched. Your saved cat markers remain accessible.
+              Mode luring: Ubin peta tidak dapat dimuat. Penanda kucing yang tersimpan tetap dapat diakses.
             </span>
           </div>
         )}
@@ -339,9 +350,9 @@ export const MapPage: React.FC = () => {
               <div className="empty-state-icon-circle">
                 <Footprints size={28} />
               </div>
-              <h2 className="empty-state-title">No Mapped Sightings Yet</h2>
+              <h2 className="empty-state-title">Belum Ada Lokasi Kucing di Peta</h2>
               <p className="empty-state-desc">
-                When you encounter cats and record their coordinates, their circular photo pins will appear right here on your atlas.
+                Saat Anda mencatat kucing beserta titik lokasinya, penanda lingkaran akan muncul di sini.
               </p>
               <button
                 type="button"
@@ -350,7 +361,7 @@ export const MapPage: React.FC = () => {
                 id="map-add-first-cat-btn"
               >
                 <Plus size={18} />
-                <span>Log Cat with Location</span>
+                <span>Tambah Kucing dengan Lokasi</span>
               </button>
             </div>
           </div>
@@ -400,7 +411,7 @@ export const MapPage: React.FC = () => {
                 onClick={() => navigate(`/cats/${selectedMarker.catId}`)}
                 id="btn-view-cat-from-map"
               >
-                <span>Details</span>
+                <span>Detail</span>
                 <ArrowRight size={13} />
               </button>
               <button
@@ -408,7 +419,7 @@ export const MapPage: React.FC = () => {
                 className="btn-secondary"
                 style={{ padding: '6px', borderRadius: '50%' }}
                 onClick={() => setSelectedMarker(null)}
-                aria-label="Close card"
+                aria-label="Tutup pratinjau"
               >
                 <X size={15} />
               </button>
@@ -424,11 +435,11 @@ export const MapPage: React.FC = () => {
             type="button"
             className="fab-button"
             onClick={() => navigate('/cats/new')}
-            aria-label="Add new cat or sighting"
+            aria-label="Tambah kucing baru"
             id="global-quick-capture-fab"
           >
             <Plus size={20} />
-            <span>Log Cat</span>
+            <span>Tambah Kucing</span>
           </button>
         </div>
       )}

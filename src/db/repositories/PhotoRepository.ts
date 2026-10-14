@@ -42,6 +42,11 @@ export class PhotoRepository {
         mimeType: input.mimeType,
         width: input.width || null,
         height: input.height || null,
+        focalX: input.focalX ?? 0.5,
+        focalY: input.focalY ?? 0.5,
+        zoom: input.zoom ?? 1.0,
+        latitude: input.latitude !== undefined ? input.latitude : null,
+        longitude: input.longitude !== undefined ? input.longitude : null,
         createdAt: now,
       };
 
@@ -128,6 +133,27 @@ export class PhotoRepository {
       if (err instanceof NotFoundError) throw err;
       throw new DatabaseError(`Failed to delete photo with ID "${id}".`, err);
     }
+  }
+
+  /**
+   * Update crop focal coordinates and zoom on an existing photo
+   */
+  async updateCrop(
+    id: string,
+    crop: { focalX?: number | null; focalY?: number | null; zoom?: number | null }
+  ): Promise<CatPhoto> {
+    const photo = await this.getById(id);
+    if (!photo) {
+      throw new NotFoundError('Photo', id);
+    }
+
+    const updatedFields: Partial<CatPhoto> = {};
+    if (crop.focalX !== undefined) updatedFields.focalX = crop.focalX;
+    if (crop.focalY !== undefined) updatedFields.focalY = crop.focalY;
+    if (crop.zoom !== undefined) updatedFields.zoom = crop.zoom;
+
+    await this.db.photos.update(id, updatedFields);
+    return { ...photo, ...updatedFields };
   }
 
   /**

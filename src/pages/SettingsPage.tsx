@@ -111,30 +111,30 @@ export const SettingsPage: React.FC = () => {
     try {
       await settingsRepository.set('profileName', profileName);
       setIsEditingName(false);
-      showFeedback('Profile name updated locally');
+      showFeedback('Nama profil berhasil diperbarui');
     } catch {
-      showFeedback('Failed to save profile name', 'danger');
+      showFeedback('Gagal menyimpan nama profil', 'danger');
     }
   };
 
   const handleClearData = async () => {
     const confirmed = window.confirm(
-      'Are you sure you want to reset all local data? This action will permanently remove all cats, sightings, and photos.'
+      'Apakah Anda yakin ingin mengatur ulang semua data lokal? Tindakan ini akan menghapus permanen semua data kucing, riwayat pertemuan, dan foto.'
     );
     if (confirmed) {
       try {
         await settingsRepository.clearAllData();
         loadStorageInfo();
-        showFeedback('Local database reset successfully.');
+        showFeedback('Database lokal berhasil diatur ulang.');
       } catch {
-        showFeedback('Failed to reset local database.', 'danger');
+        showFeedback('Gagal mengatur ulang database lokal.', 'danger');
       }
     }
   };
 
   const handleRequestPersistence = async () => {
     if (!navigator.storage?.persist) {
-      showFeedback('Storage persistence API not supported on this browser.', 'danger');
+      showFeedback('API penyimpanan persisten tidak didukung di browser ini.', 'danger');
       return;
     }
     setIsRequestingPersist(true);
@@ -143,12 +143,12 @@ export const SettingsPage: React.FC = () => {
       setIsPersisted(granted);
       loadStorageInfo();
       if (granted) {
-        showFeedback('Persistent storage granted! Browser will not clear data under disk pressure.');
+        showFeedback('Penyimpanan persisten diizinkan! Browser tidak akan menghapus data saat memori penuh.');
       } else {
-        showFeedback('Browser declined persistence request (common in guest or low-storage modes).', 'danger');
+        showFeedback('Browser menolak permintaan persistensi (umum terjadi pada mode tamu).', 'danger');
       }
     } catch {
-      showFeedback('Failed to request persistent storage.', 'danger');
+      showFeedback('Gagal meminta penyimpanan persisten.', 'danger');
     } finally {
       setIsRequestingPersist(false);
     }
@@ -159,9 +159,9 @@ export const SettingsPage: React.FC = () => {
     try {
       const zipBlob = await backupService.exportBackup();
       backupService.triggerDownload(zipBlob);
-      showFeedback('Backup exported successfully as ZIP archive.');
+      showFeedback('Cadangan data berhasil diekspor sebagai arsip ZIP.');
     } catch (err) {
-      showFeedback(`Export failed: ${err instanceof Error ? err.message : String(err)}`, 'danger');
+      showFeedback(`Ekspor gagal: ${err instanceof Error ? err.message : String(err)}`, 'danger');
     } finally {
       setIsExporting(false);
     }
@@ -182,13 +182,13 @@ export const SettingsPage: React.FC = () => {
     try {
       const result = await backupService.validateBackupFile(file);
       if (!result.isValid) {
-        showFeedback(`Invalid backup file: ${result.error}`, 'danger');
+        showFeedback(`File cadangan tidak valid: ${result.error}`, 'danger');
         return;
       }
       setValidationResult(result);
       setShowRestoreModal(true);
     } catch (err) {
-      showFeedback(`Error reading backup: ${err instanceof Error ? err.message : String(err)}`, 'danger');
+      showFeedback(`Gagal membaca file cadangan: ${err instanceof Error ? err.message : String(err)}`, 'danger');
     } finally {
       setIsValidating(false);
     }
@@ -202,9 +202,9 @@ export const SettingsPage: React.FC = () => {
       setShowRestoreModal(false);
       setValidationResult(null);
       loadStorageInfo();
-      showFeedback(`Restored ${res.restoredCats} cats, ${res.restoredSightings} sightings, and ${res.restoredPhotos} photos!`);
+      showFeedback(`Berhasil memulihkan ${res.restoredCats} kucing, ${res.restoredSightings} pertemuan, dan ${res.restoredPhotos} foto!`);
     } catch (err) {
-      showFeedback(`Restore failed: ${err instanceof Error ? err.message : String(err)}`, 'danger');
+      showFeedback(`Pemulihan gagal: ${err instanceof Error ? err.message : String(err)}`, 'danger');
     } finally {
       setIsRestoring(false);
     }
@@ -217,7 +217,7 @@ export const SettingsPage: React.FC = () => {
       if (choice.outcome === 'accepted') {
         setIsStandalone(true);
         setDeferredPrompt(null);
-        showFeedback('ProwlLog added to your home screen!');
+        showFeedback('ProwlLog berhasil ditambahkan ke layar utama!');
       }
     }
   };
@@ -233,8 +233,8 @@ export const SettingsPage: React.FC = () => {
     <div className="page-container" id="settings-page">
       <div className="page-header-row">
         <div>
-          <h1 className="page-title">Settings</h1>
-          <span className="page-subtitle">Preferences, storage &amp; portable backups</span>
+          <h1 className="page-title">Pengaturan</h1>
+          <span className="page-subtitle">Preferensi, penyimpanan &amp; cadangan data</span>
         </div>
       </div>
 
@@ -268,15 +268,15 @@ export const SettingsPage: React.FC = () => {
 
       {/* Group 1: Profile */}
       <section className="settings-group" aria-labelledby="heading-profile">
-        <div className="settings-group-header" id="heading-profile">Profile</div>
+        <div className="settings-group-header" id="heading-profile">Profil</div>
         <div className="settings-row">
           <div className="settings-row-left">
             <div className="settings-icon-box">
               <User size={18} />
             </div>
             <div className="settings-text-col">
-              <span className="settings-label">Local User Label</span>
-              <span className="settings-desc">Personal local-first identifier stored on this device</span>
+              <span className="settings-label">Label Pengguna Lokal</span>
+              <span className="settings-desc">Nama pengguna yang tersimpan lokal di perangkat ini</span>
             </div>
           </div>
           <div>
@@ -300,7 +300,7 @@ export const SettingsPage: React.FC = () => {
                   style={{ padding: '4px 8px', fontSize: 'var(--font-size-xs)' }}
                   onClick={handleSaveProfileName}
                 >
-                  Save
+                  Simpan
                 </button>
               </div>
             ) : (
@@ -308,9 +308,9 @@ export const SettingsPage: React.FC = () => {
                 type="button"
                 className="settings-value-pill"
                 onClick={() => setIsEditingName(true)}
-                title="Click to rename"
+                title="Klik untuk mengubah"
               >
-                {profileName} ✎
+                {profileName}
               </button>
             )}
           </div>
@@ -319,24 +319,24 @@ export const SettingsPage: React.FC = () => {
 
       {/* Group 2: Map Preferences */}
       <section className="settings-group" aria-labelledby="heading-map">
-        <div className="settings-group-header" id="heading-map">Map Preferences</div>
+        <div className="settings-group-header" id="heading-map">Pengaturan Peta</div>
         <div className="settings-row">
           <div className="settings-row-left">
             <div className="settings-icon-box">
               <MapPin size={18} />
             </div>
             <div className="settings-text-col">
-              <span className="settings-label">Default Map View</span>
-              <span className="settings-desc">Centers map on current device location when permission is granted</span>
+              <span className="settings-label">Tampilan Peta Default</span>
+              <span className="settings-desc">Pusatkan peta ke lokasi perangkat saat izin lokasi diberikan</span>
             </div>
           </div>
-          <span className="settings-value-pill">GPS Auto-center</span>
+          <span className="settings-value-pill">Pusatkan GPS Otomatis</span>
         </div>
       </section>
 
       {/* Group 3: Data & Privacy */}
       <section className="settings-group" aria-labelledby="heading-privacy">
-        <div className="settings-group-header" id="heading-privacy">Data, Storage &amp; Backup</div>
+        <div className="settings-group-header" id="heading-privacy">Data, Penyimpanan &amp; Cadangan</div>
         
         {/* Local-First Storage */}
         <div className="settings-row">
@@ -345,13 +345,13 @@ export const SettingsPage: React.FC = () => {
               <ShieldCheck size={18} />
             </div>
             <div className="settings-text-col">
-              <span className="settings-label">Local-First Privacy</span>
+              <span className="settings-label">Privasi Lokal Mandiri</span>
               <span className="settings-desc">
-                Photos and cat records stay strictly on this device inside IndexedDB. No server tracking.
+                Foto dan catatan kucing tersimpan di perangkat melalui IndexedDB. Tanpa pelacakan server.
               </span>
             </div>
           </div>
-          <span className="settings-value-pill">Active</span>
+          <span className="settings-value-pill">Aktif</span>
         </div>
 
         {/* Storage Quota Usage */}
@@ -361,12 +361,12 @@ export const SettingsPage: React.FC = () => {
               <Database size={18} />
             </div>
             <div className="settings-text-col">
-              <span className="settings-label">Storage Usage (Estimated)</span>
+              <span className="settings-label">Penggunaan Penyimpanan (Perkiraan)</span>
               <span className="settings-desc">
                 {storageEstimate ? (
-                  `${formatBytes(storageEstimate.usage)} used of ~${formatBytes(storageEstimate.quota)} browser quota estimate`
+                  `${formatBytes(storageEstimate.usage)} terpakai dari ~${formatBytes(storageEstimate.quota)} perkiraan kuota browser`
                 ) : (
-                  'Querying browser storage quota...'
+                  'Memeriksa kuota penyimpanan browser...'
                 )}
               </span>
             </div>
@@ -383,20 +383,20 @@ export const SettingsPage: React.FC = () => {
               <Lock size={18} />
             </div>
             <div className="settings-text-col">
-              <span className="settings-label">Persistent Storage</span>
+              <span className="settings-label">Penyimpanan Persisten</span>
               <span className="settings-desc">
                 {isPersisted === true
-                  ? 'Granted. Browser protects local database from automated eviction.'
+                  ? 'Diizinkan. Browser melindungi database lokal dari pembersihan otomatis.'
                   : isPersisted === false
-                  ? 'Standard. Browser might clear data under extreme storage pressure.'
-                  : 'Storage persistence status not confirmed by browser.'}
+                  ? 'Standar. Browser mungkin membersihkan data saat ruang penyimpanan menipis.'
+                  : 'Status penyimpanan persisten belum dikonfirmasi browser.'}
               </span>
             </div>
           </div>
           <div>
             {isPersisted === true ? (
               <span className="settings-value-pill" style={{ color: 'var(--color-primary)' }}>
-                Protected ✓
+                Dilindungi
               </span>
             ) : (
               <button
@@ -407,7 +407,7 @@ export const SettingsPage: React.FC = () => {
                 disabled={isRequestingPersist}
                 id="btn-request-storage-persist"
               >
-                {isRequestingPersist ? 'Requesting...' : 'Request Persistence'}
+                {isRequestingPersist ? 'Meminta...' : 'Minta Persistensi'}
               </button>
             )}
           </div>
@@ -420,9 +420,9 @@ export const SettingsPage: React.FC = () => {
               <HardDrive size={18} />
             </div>
             <div className="settings-text-col">
-              <span className="settings-label">Export Full Backup (.ZIP)</span>
+              <span className="settings-label">Ekspor Cadangan Lengkap (.ZIP)</span>
               <span className="settings-desc">
-                Download structured archive with metadata (JSON) and all photo images as binary files.
+                Unduh arsip data terstruktur beserta metadata (JSON) dan file foto.
               </span>
             </div>
           </div>
@@ -435,7 +435,7 @@ export const SettingsPage: React.FC = () => {
             id="btn-export-backup"
           >
             <Download size={14} />
-            <span>{isExporting ? 'Exporting...' : 'Export Backup'}</span>
+            <span>{isExporting ? 'Mengekspor...' : 'Ekspor Cadangan'}</span>
           </button>
         </div>
 
@@ -446,9 +446,9 @@ export const SettingsPage: React.FC = () => {
               <Upload size={18} />
             </div>
             <div className="settings-text-col">
-              <span className="settings-label">Restore from Backup</span>
+              <span className="settings-label">Pulihkan dari Cadangan</span>
               <span className="settings-desc">
-                Import and recover data from a previously exported ProwlLog ZIP archive.
+                Impor dan pulihkan data dari arsip ZIP ProwlLog sebelumnya.
               </span>
             </div>
           </div>
@@ -461,7 +461,7 @@ export const SettingsPage: React.FC = () => {
             id="btn-restore-backup"
           >
             <Upload size={14} />
-            <span>{isValidating ? 'Validating...' : 'Restore Backup'}</span>
+            <span>{isValidating ? 'Memeriksa...' : 'Pulihkan Cadangan'}</span>
           </button>
         </div>
 
@@ -473,10 +473,10 @@ export const SettingsPage: React.FC = () => {
             </div>
             <div className="settings-text-col">
               <span className="settings-label" style={{ color: 'var(--color-danger)' }}>
-                Reset Local Data
+                Reset Data Lokal
               </span>
               <span className="settings-desc">
-                Permanently purge all stored cats, sightings, and photos on this browser.
+                Hapus permanen semua data kucing, riwayat pertemuan, dan foto di browser ini.
               </span>
             </div>
           </div>
@@ -492,14 +492,14 @@ export const SettingsPage: React.FC = () => {
             onClick={handleClearData}
             id="btn-clear-data"
           >
-            Clear Data
+            Hapus Data
           </button>
         </div>
       </section>
 
       {/* Group 4: App & PWA Information */}
       <section className="settings-group" aria-labelledby="heading-app">
-        <div className="settings-group-header" id="heading-app">App &amp; PWA Information</div>
+        <div className="settings-group-header" id="heading-app">Informasi Aplikasi &amp; PWA</div>
         
         <div className="settings-row">
           <div className="settings-row-left">
@@ -507,14 +507,14 @@ export const SettingsPage: React.FC = () => {
               <Smartphone size={18} />
             </div>
             <div className="settings-text-col">
-              <span className="settings-label">Network Status</span>
+              <span className="settings-label">Status Jaringan</span>
               <span className="settings-desc">
-                {isOnline ? 'Connected to internet. Map tiles can be retrieved.' : 'Offline mode. Local data & photos fully accessible.'}
+                {isOnline ? 'Terhubung ke internet. Peta dapat dimuat.' : 'Mode offline. Data lokal & foto tetap dapat diakses penuh.'}
               </span>
             </div>
           </div>
           <span className="settings-value-pill">
-            {isOnline ? '🟢 Online' : '🟠 Offline'}
+            {isOnline ? 'Online' : 'Offline'}
           </span>
         </div>
 
@@ -524,13 +524,13 @@ export const SettingsPage: React.FC = () => {
               <Smartphone size={18} />
             </div>
             <div className="settings-text-col">
-              <span className="settings-label">PWA Installation</span>
+              <span className="settings-label">Instalasi PWA</span>
               <span className="settings-desc">
                 {isStandalone
-                  ? 'Running in standalone PWA app window.'
+                  ? 'Berjalan dalam jendela aplikasi PWA tersendiri.'
                   : deferredPrompt
-                  ? 'Ready to install to your device home screen.'
-                  : 'Add ProwlLog to Home Screen via your browser menu for full offline experience.'}
+                  ? 'Siap dipasang ke layar utama perangkat.'
+                  : 'Tambahkan ProwlLog ke Layar Utama melalui menu browser untuk pengalaman offline maksimal.'}
               </span>
             </div>
           </div>
@@ -543,11 +543,11 @@ export const SettingsPage: React.FC = () => {
                 onClick={handleInstallApp}
                 id="btn-install-pwa"
               >
-                Install App
+                Pasang Aplikasi
               </button>
             ) : (
               <span className="settings-value-pill">
-                {isStandalone ? 'Installed ✓' : 'Web App'}
+                {isStandalone ? 'Terpasang' : 'Aplikasi Web'}
               </span>
             )}
           </div>
@@ -559,7 +559,7 @@ export const SettingsPage: React.FC = () => {
               <Info size={18} />
             </div>
             <div className="settings-text-col">
-              <span className="settings-label">Application Version</span>
+              <span className="settings-label">Versi Aplikasi</span>
               <span className="settings-desc">ProwlLog Progressive Web App (Milestone 5)</span>
             </div>
           </div>
@@ -574,13 +574,13 @@ export const SettingsPage: React.FC = () => {
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <FileCheck2 size={20} color="var(--color-primary)" />
-                <h2 className="modal-title">Confirm Database Restore</h2>
+                <h2 className="modal-title">Konfirmasi Pemulihan Database</h2>
               </div>
               <button
                 type="button"
                 className="btn-icon"
                 onClick={() => setShowRestoreModal(false)}
-                aria-label="Close"
+                aria-label="Tutup"
               >
                 <X size={18} />
               </button>
@@ -588,7 +588,7 @@ export const SettingsPage: React.FC = () => {
 
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', margin: 0 }}>
-                A valid ProwlLog backup archive was verified. Review the contents below and select a restore strategy.
+                Arsip cadangan ProwlLog yang valid berhasil diverifikasi. Periksa ringkasan di bawah dan pilih metode pemulihan.
               </p>
 
               {/* Archive Summary Card */}
@@ -602,12 +602,12 @@ export const SettingsPage: React.FC = () => {
                 gridTemplateColumns: 'repeat(2, 1fr)',
                 gap: '8px'
               }}>
-                <div><strong>Cats:</strong> {validationResult.manifest.counts.cats}</div>
-                <div><strong>Sightings:</strong> {validationResult.manifest.counts.sightings}</div>
-                <div><strong>Photos:</strong> {validationResult.manifest.counts.photos}</div>
-                <div><strong>Feeding Logs:</strong> {validationResult.manifest.counts.feedingLogs}</div>
+                <div><strong>Kucing:</strong> {validationResult.manifest.counts.cats}</div>
+                <div><strong>Pertemuan:</strong> {validationResult.manifest.counts.sightings}</div>
+                <div><strong>Foto:</strong> {validationResult.manifest.counts.photos}</div>
+                <div><strong>Catatan Makan:</strong> {validationResult.manifest.counts.feedingLogs}</div>
                 <div style={{ gridColumn: 'span 2', color: 'var(--color-text-muted)' }}>
-                  Exported: {new Date(validationResult.manifest.exportedAt).toLocaleString()}
+                  Diekspor: {new Date(validationResult.manifest.exportedAt).toLocaleString('id-ID')}
                 </div>
               </div>
 
@@ -616,7 +616,7 @@ export const SettingsPage: React.FC = () => {
                 <div className="info-banner" style={{ borderColor: 'var(--color-coral)', color: 'var(--color-coral)' }}>
                   <AlertTriangle size={15} className="info-banner-icon" />
                   <span>
-                    {validationResult.conflictCounts.existingCats} cat records in this backup already exist in your local database.
+                    {validationResult.conflictCounts.existingCats} catatan kucing dalam cadangan ini sudah ada di database lokal Anda.
                   </span>
                 </div>
               )}
@@ -624,7 +624,7 @@ export const SettingsPage: React.FC = () => {
               {/* Strategy selector */}
               <div>
                 <label style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
-                  Restore Strategy:
+                  Metode Pemulihan:
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{
@@ -647,9 +647,9 @@ export const SettingsPage: React.FC = () => {
                       style={{ marginTop: '2px' }}
                     />
                     <div>
-                      <strong>Replace (Recommended)</strong>
+                      <strong>Ganti Semua (Disarankan)</strong>
                       <div style={{ color: 'var(--color-text-secondary)' }}>
-                        Overwrites all current local records with the backup file data.
+                        Menimpa seluruh data lokal saat ini dengan data dari file cadangan.
                       </div>
                     </div>
                   </label>
@@ -674,9 +674,9 @@ export const SettingsPage: React.FC = () => {
                       style={{ marginTop: '2px' }}
                     />
                     <div>
-                      <strong>Merge</strong>
+                      <strong>Gabungkan (Merge)</strong>
                       <div style={{ color: 'var(--color-text-secondary)' }}>
-                        Adds new cats and updates matching records without deleting unmentioned data.
+                        Menambahkan kucing baru dan memperbarui data yang cocok tanpa menghapus data lainnya.
                       </div>
                     </div>
                   </label>
@@ -691,7 +691,7 @@ export const SettingsPage: React.FC = () => {
                 onClick={() => setShowRestoreModal(false)}
                 disabled={isRestoring}
               >
-                Cancel
+                Batal
               </button>
               <button
                 type="button"
@@ -703,10 +703,10 @@ export const SettingsPage: React.FC = () => {
                 {isRestoring ? (
                   <>
                     <RefreshCw size={14} className="spin" />
-                    <span>Restoring...</span>
+                    <span>Memulihkan...</span>
                   </>
                 ) : (
-                  <span>Confirm Restore</span>
+                  <span>Konfirmasi Pemulihan</span>
                 )}
               </button>
             </div>

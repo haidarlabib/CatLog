@@ -4,7 +4,7 @@ import { Map, Footprints, Settings } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
   return (
-    <nav className="bottom-nav-wrapper" aria-label="Main Navigation">
+    <nav className="bottom-nav-wrapper" aria-label="Navigasi Utama">
       <div className="bottom-nav-pill">
         <NavLink
           to="/"
@@ -13,7 +13,7 @@ export const BottomNav: React.FC = () => {
           id="nav-tab-map"
         >
           <Map className="nav-item-icon" aria-hidden="true" />
-          <span className="nav-item-label">Map</span>
+          <span className="nav-item-label">Peta</span>
         </NavLink>
 
         <NavLink
@@ -22,7 +22,7 @@ export const BottomNav: React.FC = () => {
           id="nav-tab-catalog"
         >
           <Footprints className="nav-item-icon" aria-hidden="true" />
-          <span className="nav-item-label">CATalog</span>
+          <span className="nav-item-label">Katalog Kucing</span>
         </NavLink>
 
         <NavLink
@@ -31,7 +31,7 @@ export const BottomNav: React.FC = () => {
           id="nav-tab-settings"
         >
           <Settings className="nav-item-icon" aria-hidden="true" />
-          <span className="nav-item-label">Settings</span>
+          <span className="nav-item-label">Pengaturan</span>
         </NavLink>
       </div>
     </nav>

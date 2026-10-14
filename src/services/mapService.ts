@@ -12,6 +12,7 @@ export interface MapMarkerData {
   catId: string;
   catName: string;
   catBreed?: string;
+  badgeRing?: string;
   latitude: number;
   longitude: number;
   locationName?: string | null;
@@ -19,6 +20,9 @@ export interface MapMarkerData {
   notes?: string;
   photoBlob?: Blob | null;
   photoUrl?: string;
+  focalX?: number | null;
+  focalY?: number | null;
+  zoom?: number | null;
 }
 
 export class MapService {
@@ -60,11 +64,17 @@ export class MapService {
       // Fetch photo Blob: prioritize sighting's own photo, fallback to cat cover photo
       const photoId = sighting.photoId || cat.coverPhotoId;
       let photoBlob: Blob | null = null;
+      let focalX: number | null = null;
+      let focalY: number | null = null;
+      let zoom: number | null = null;
 
       if (photoId) {
         const photo = await this.photoRepository.getById(photoId);
         if (photo?.blob) {
           photoBlob = photo.blob;
+          focalX = photo.focalX ?? 0.5;
+          focalY = photo.focalY ?? 0.5;
+          zoom = photo.zoom ?? 1.0;
         }
       }
 
@@ -73,12 +83,16 @@ export class MapService {
         catId: cat.id,
         catName: cat.name,
         catBreed: cat.breed && cat.breed !== 'unknown' ? cat.breed : undefined,
+        badgeRing: cat.badgeRing,
         latitude: sighting.latitude,
         longitude: sighting.longitude,
         locationName: sighting.locationName,
         spottedAt: sighting.spottedAt,
         notes: sighting.notes,
         photoBlob,
+        focalX,
+        focalY,
+        zoom,
       });
     }
 

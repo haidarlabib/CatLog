@@ -49,6 +49,11 @@ export interface CatPhoto {
   mimeType: string;
   width?: number | null;
   height?: number | null;
+  focalX?: number | null; // 0 (left) to 1 (right), default 0.5
+  focalY?: number | null; // 0 (top) to 1 (bottom), default 0.5
+  zoom?: number | null;   // multiplier >= 1, default 1.0
+  latitude?: number | null;
+  longitude?: number | null;
   createdAt: string; // ISO 8601
 }
 
@@ -121,6 +126,11 @@ export interface SavePhotoInput {
   mimeType: string;
   width?: number | null;
   height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+  zoom?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface CreateFeedingLogInput {

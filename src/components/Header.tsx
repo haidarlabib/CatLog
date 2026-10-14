@@ -38,13 +38,13 @@ export const Header: React.FC<HeaderProps> = ({ catCount = 0 }) => {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <div className="header-status-pill" title={`Unique cats logged: ${catCount}`}>
-          <span>{catCount} {catCount === 1 ? 'Cat' : 'Cats'}</span>
+        <div className="header-status-pill" title={`Total kucing terdata: ${catCount}`}>
+          <span>{catCount} Kucing</span>
         </div>
 
         <div 
           className="header-status-pill"
-          title={isOnline ? 'Online mode active' : 'Offline mode active (Local storage available)'}
+          title={isOnline ? 'Mode daring aktif' : 'Mode luring aktif (Penyimpanan lokal tersedia)'}
         >
           <span className={`header-status-dot ${isOnline ? '' : 'offline'}`} />
           {isOnline ? (

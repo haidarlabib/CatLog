@@ -126,3 +126,52 @@ export async function compressImage(
     img.src = objectUrl;
   });
 }
+
+export interface PhotoCropData {
+  focalX: number; // 0.0 (left) to 1.0 (right), center = 0.5
+  focalY: number; // 0.0 (top) to 1.0 (bottom), center = 0.5
+  zoom: number;   // 1.0 to 3.0, default = 1.0
+}
+
+export const DEFAULT_PHOTO_CROP: PhotoCropData = {
+  focalX: 0.5,
+  focalY: 0.5,
+  zoom: 1.0,
+};
+
+/**
+ * Sanitizes and bounds crop coordinates within safe valid ranges [0..1] and zoom [1..3].
+ * Provides safe default { focalX: 0.5, focalY: 0.5, zoom: 1.0 } for older records.
+ */
+export function clampCrop(crop?: Partial<PhotoCropData> | null): PhotoCropData {
+  if (!crop) return { ...DEFAULT_PHOTO_CROP };
+  const rawX = typeof crop.focalX === 'number' && !isNaN(crop.focalX) ? crop.focalX : 0.5;
+  const rawY = typeof crop.focalY === 'number' && !isNaN(crop.focalY) ? crop.focalY : 0.5;
+  const rawZoom = typeof crop.zoom === 'number' && !isNaN(crop.zoom) ? crop.zoom : 1.0;
+
+  return {
+    focalX: Math.max(0, Math.min(1, rawX)),
+    focalY: Math.max(0, Math.min(1, rawY)),
+    zoom: Math.max(1.0, Math.min(3.0, rawZoom)),
+  };
+}
+
+/**
+ * Returns CSS properties for non-destructive image focal positioning and zoom.
+ */
+export function getCropStyle(crop?: Partial<PhotoCropData> | null): {
+  objectPosition: string;
+  transformOrigin: string;
+  transform?: string;
+} {
+  const { focalX, focalY, zoom } = clampCrop(crop);
+  const posX = `${(focalX * 100).toFixed(1)}%`;
+  const posY = `${(focalY * 100).toFixed(1)}%`;
+
+  return {
+    objectPosition: `${posX} ${posY}`,
+    transformOrigin: `${posX} ${posY}`,
+    transform: zoom > 1.001 ? `scale(${zoom.toFixed(2)})` : undefined,
+  };
+}
+

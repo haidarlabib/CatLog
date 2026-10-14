@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ProwlLogDatabase, ValidationError, NotFoundError } from '../db';
 import { CatService } from '../services/catService';
-import { getCurrentDeviceLocation } from '../utils/geo';
+import { getCurrentDeviceLocation, reverseGeocode, formatCoordinates } from '../utils/geo';
 
 describe('CatService & Cat Management (Milestone 3)', () => {
   let testDb: ProwlLogDatabase;
@@ -178,6 +178,34 @@ describe('CatService & Cat Management (Milestone 3)', () => {
       expect(sightingAfter).not.toBeNull();
       expect(sightingAfter?.id).toBe(sighting.id);
     });
+
+    it('persists and updates badgeRing, coatColors, patterns, and cat-level notes', async () => {
+      const { cat } = await service.createCatWithFirstSighting({
+        name: 'Milo',
+        badgeRing: 'Terracotta',
+        coatColors: ['Oranye', 'Putih'],
+        patterns: ['Tabby'],
+        notes: 'Suka tidur di teras',
+      });
+
+      expect(cat.badgeRing).toBe('Terracotta');
+      expect(cat.coatColors).toEqual(['Oranye', 'Putih']);
+      expect(cat.patterns).toEqual(['Tabby']);
+      expect(cat.notes).toBe('Suka tidur di teras');
+
+      // Update badge ring and appearance
+      const updated = await service.updateCatProfile(cat.id, {
+        badgeRing: 'Biru',
+        coatColors: ['Oranye', 'Putih', 'Krem'],
+        patterns: ['Tabby', 'Polos'],
+        notes: 'Sekarang lebih aktif dan suka bermain',
+      });
+
+      expect(updated.badgeRing).toBe('Biru');
+      expect(updated.coatColors).toEqual(['Oranye', 'Putih', 'Krem']);
+      expect(updated.patterns).toEqual(['Tabby', 'Polos']);
+      expect(updated.notes).toBe('Sekarang lebih aktif dan suka bermain');
+    });
   });
 
   describe('4. Geolocation Error Handling Logic', () => {
@@ -225,4 +253,43 @@ describe('CatService & Cat Management (Milestone 3)', () => {
       vi.unstubAllGlobals();
     });
   });
+
+  describe('5. Reverse Geocoding & Coordinate Formatting', () => {
+    it('formats coordinates correctly for positive and negative values', () => {
+      expect(formatCoordinates(-6.175392, 106.827153)).toBe('Lat: -6.1754, Lng: 106.8272');
+      expect(formatCoordinates(51.5074, -0.1278)).toBe('Lat: 51.5074, Lng: -0.1278');
+    });
+
+    it('resolves place name from reverse geocoding API', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          display_name: 'Monumen Nasional, Gambir, Jakarta Pusat, DKI Jakarta, Indonesia',
+          address: {
+            tourism: 'Monumen Nasional',
+            suburb: 'Gambir',
+            city: 'Jakarta Pusat',
+          },
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const placeName = await reverseGeocode(-6.1754, 106.8272);
+      expect(placeName).toBe('Monumen Nasional, Gambir');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      vi.unstubAllGlobals();
+    });
+
+    it('returns null on fetch failure without throwing error', async () => {
+      const mockFetch = vi.fn().mockRejectedValue(new Error('Network error / offline'));
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await reverseGeocode(-6.1754, 106.8272);
+      expect(result).toBeNull();
+
+      vi.unstubAllGlobals();
+    });
+  });
 });
+
