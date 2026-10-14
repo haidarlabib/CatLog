@@ -32,6 +32,7 @@ export const MapPage: React.FC = () => {
   const [selectedMarker, setSelectedMarker] = useState<MapMarkerData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [tileError, setTileError] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== 'undefined' ? navigator.onLine : true
   );
@@ -80,12 +81,22 @@ export const MapPage: React.FC = () => {
       zoomControl: false,
     });
 
-    // Tile Layer with attribution
-    L.tileLayer(defaultMapConfig.tileProvider.url, {
+    // CARTO Voyager Tile Layer with attribution
+    const tileLayer = L.tileLayer(defaultMapConfig.tileProvider.url, {
       attribution: defaultMapConfig.tileProvider.attribution,
       maxZoom: defaultMapConfig.tileProvider.maxZoom,
-      subdomains: defaultMapConfig.tileProvider.subdomains || ['a', 'b', 'c'],
-    }).addTo(map);
+      subdomains: defaultMapConfig.tileProvider.subdomains || ['a', 'b', 'c', 'd'],
+    });
+
+    tileLayer.on('tileerror', () => {
+      setTileError(true);
+    });
+
+    tileLayer.on('load', () => {
+      setTileError(false);
+    });
+
+    tileLayer.addTo(map);
 
     // Zoom controls positioned at top-left
     L.control.zoom({ position: 'topleft' }).addTo(map);
@@ -342,6 +353,30 @@ export const MapPage: React.FC = () => {
             <WifiOff size={16} style={{ color: 'var(--color-coral)', flexShrink: 0 }} />
             <span style={{ color: 'var(--color-text-main)', fontSize: 'var(--font-size-xs)' }}>
               Mode luring: Ubin peta tidak dapat dimuat. Penanda kucing yang tersimpan tetap dapat diakses.
+            </span>
+          </div>
+        )}
+
+        {/* Transient Tile Error Notice while online */}
+        {tileError && isOnline && (
+          <div
+            className="info-banner"
+            style={{
+              position: 'absolute',
+              top: '16px',
+              left: '16px',
+              right: '16px',
+              zIndex: 998,
+              backgroundColor: 'rgba(250, 248, 242, 0.95)',
+              borderColor: 'var(--color-border)',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+            role="status"
+            id="map-tile-error-banner"
+          >
+            <AlertCircle size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+            <span style={{ color: 'var(--color-text-primary)', fontSize: 'var(--font-size-xs)' }}>
+              Sebagian ubin peta terkendala. Penanda kucing yang tersimpan tetap aktif.
             </span>
           </div>
         )}
