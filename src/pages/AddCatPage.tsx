@@ -192,21 +192,23 @@ export const AddCatPage: React.FC = () => {
       ? `<img src="${photoDraft.previewUrl}" alt="Marker Foto" style="width: 100%; height: 100%; object-fit: cover; object-position: ${objectPosition}; ${transform}" />`
       : `<div class="fallback-icon" style="color: ${badge.hex};"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4-3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4 3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm-9 4c-3 0-5 2-5 5 0 2 2 3 5 3s5-1 5-3c0-3-2-5-5-5z"/></svg></div>`;
 
+    const cal = badge.calibration;
+
     const customIcon = L.divIcon({
       className: 'cat-map-marker-container',
       html: `
         <div class="cat-photo-marker-pin selected">
           <div class="cat-photo-marker-frame-wrap">
-            <div class="cat-photo-marker-inner-circle">
+            <div class="cat-photo-marker-inner-circle" style="width: ${cal.photoDiameter}%; height: ${cal.photoDiameter}%; top: ${cal.photoCenterY}%; left: ${cal.photoCenterX}%;">
               ${photoContent}
             </div>
-            <img class="cat-photo-marker-badge-img" src="${badge.assetPath}" alt="${badge.nickname}" />
+            <img class="cat-photo-marker-badge-img" src="${badge.assetPath}" alt="${badge.nickname}" style="transform: scale(${cal.frameScale});" />
           </div>
           <div class="cat-photo-marker-arrow" style="border-top-color: ${badge.hex};"></div>
         </div>
       `,
-      iconSize: [50, 56],
-      iconAnchor: [25, 56],
+      iconSize: [52, 57],
+      iconAnchor: [26, 57],
     });
 
     if (!mapInstanceRef.current) {
@@ -455,7 +457,7 @@ export const AddCatPage: React.FC = () => {
                 Penanda Peta
               </span>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '4px 0' }}>
-                <div style={{ width: '56px', height: '56px' }}>
+                <div style={{ width: '64px', height: '64px' }}>
                   <CatPhotoImg
                     src={photoDraft.previewUrl}
                     alt="Penanda Peta"

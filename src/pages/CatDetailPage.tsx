@@ -10,7 +10,8 @@ import {
   Utensils, 
   Sparkles, 
   CheckCircle2, 
-  AlertTriangle 
+  AlertTriangle,
+  Camera
 } from 'lucide-react';
 import { 
   catRepository, 
@@ -19,6 +20,7 @@ import {
 } from '../db';
 import { CatPhotoImg } from '../components/CatPhotoImg';
 import { formatBreedLabel, formatAppearanceLabel } from '../config/catAppearance';
+import { formatIndonesianDateTime } from '../utils/date';
 import type { Cat, Sighting, FeedingLog } from '../types';
 
 export const CatDetailPage: React.FC = () => {
@@ -225,7 +227,7 @@ export const CatDetailPage: React.FC = () => {
           <div style={{ marginTop: 'var(--space-2)', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--color-border-subtle)', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Calendar size={13} />
-              <span>Terakhir terlihat: {new Date(latestSighting.spottedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+              <span>Terakhir terlihat: {formatIndonesianDateTime(latestSighting.spottedAt)}</span>
             </span>
             {latestSighting.locationName && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -250,31 +252,39 @@ export const CatDetailPage: React.FC = () => {
       </div>
 
       {/* Encounter History Section */}
-      <div className="timeline-card">
+      <div className="timeline-card" id="cat-encounter-history">
         <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-bold)' }}>
           Riwayat Pertemuan ({sightings.length})
         </h2>
 
         {sightings.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }} id="sightings-list">
             {sightings.map((sighting) => {
-              const formattedDate = new Date(sighting.spottedAt).toLocaleDateString(undefined, {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              });
+              const formattedDate = formatIndonesianDateTime(sighting.spottedAt);
 
               return (
-                <div key={sighting.id} className="timeline-item">
-                  {sighting.photoId && (
+                <div key={sighting.id} className="timeline-item" id={`sighting-item-${sighting.id}`}>
+                  {sighting.photoId ? (
                     <div className="timeline-thumb">
                       <CatPhotoImg
                         photoId={sighting.photoId}
                         alt="Foto pertemuan kucing"
                         className="timeline-thumb"
                       />
+                    </div>
+                  ) : (
+                    <div
+                      className="timeline-thumb timeline-thumb-placeholder"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'var(--color-surface-subtle)',
+                        color: 'var(--color-text-subtle)',
+                      }}
+                      aria-label="Tidak ada foto"
+                    >
+                      <Camera size={22} style={{ opacity: 0.45 }} />
                     </div>
                   )}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
@@ -285,11 +295,6 @@ export const CatDetailPage: React.FC = () => {
                       <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '3px' }}>
                         <MapPin size={11} />
                         <span>{sighting.locationName}</span>
-                      </span>
-                    )}
-                    {sighting.latitude !== null && sighting.longitude !== null && (
-                      <span style={{ fontSize: '11px', color: 'var(--color-text-subtle)' }}>
-                        GPS: {sighting.latitude.toFixed(4)}, {sighting.longitude.toFixed(4)}
                       </span>
                     )}
                     {sighting.notes && (

@@ -979,20 +979,38 @@ input, select, textarea {
 }
 
 /* Leaflet Map Interactive Canvas */
-.leaflet-container {
-  font-family: var(--font-family) !important;
+.map-page-container {
+  position: relative;
   width: 100%;
-  height: 100%;
-  z-index: 1;
+  height: calc(100vh - var(--header-height));
+  height: calc(100dvh - var(--header-height));
+  min-height: 440px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.app-content:has(.map-page-container) {
+  padding-bottom: 0;
 }
 
 .map-container-full {
   flex: 1;
   position: relative;
   width: 100%;
-  height: calc(100vh - var(--header-height) - var(--bottom-nav-height));
-  min-height: 480px;
+  height: 100%;
+  min-height: 440px;
   overflow: hidden;
+}
+
+#leaflet-map-canvas,
+.leaflet-container {
+  font-family: var(--font-family) !important;
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 1;
 }
 
 /* Custom Circular Leaflet Character Badge Photo Marker */
@@ -1021,8 +1039,8 @@ input, select, textarea {
 
 .cat-photo-marker-inner-circle {
   position: absolute;
-  width: 36px;
-  height: 36px;
+  width: 52%;
+  height: 52%;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -1454,198 +1472,7 @@ input, select, textarea {
   box-shadow: 0 0 0 3px var(--color-surface), 0 0 0 5px var(--ring-color, var(--color-primary));
 }
 
-/* ==========================================================================
-   Batch 6: Colour Badge Character Selector & Accessible Tooltips
-   ========================================================================== */
 
-.colour-badge-section {
-  position: relative;
-  width: 100%;
-}
-
-.colour-badge-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-@media (max-width: 380px) {
-  .colour-badge-grid {
-    gap: 8px;
-  }
-}
-
-.colour-badge-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px 6px 10px;
-  background-color: var(--color-surface);
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  user-select: none;
-  outline: none;
-  text-align: center;
-}
-
-.colour-badge-card:hover {
-  border-color: var(--color-primary);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
-}
-
-.colour-badge-card:focus-visible {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-light);
-}
-
-.colour-badge-card.selected {
-  border-color: var(--color-primary);
-  background-color: rgba(217, 107, 67, 0.06);
-  box-shadow: 0 2px 10px rgba(217, 107, 67, 0.16);
-}
-
-.badge-card-check {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background-color: var(--color-primary);
-  color: #FFFFFF;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 5;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.badge-info-btn {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--color-text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  z-index: 5;
-  border: none;
-  padding: 0;
-}
-
-.badge-info-btn:hover,
-.badge-info-btn.active {
-  color: var(--color-primary);
-  background-color: var(--color-surface-subtle);
-}
-
-.badge-card-avatar-wrap {
-  width: 58px;
-  height: 58px;
-  position: relative;
-  margin-bottom: 6px;
-}
-
-.badge-card-info {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  align-items: center;
-  width: 100%;
-}
-
-.badge-nickname {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 90%;
-}
-
-.badge-epithet {
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 90%;
-}
-
-.colour-badge-helper {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  margin-top: 8px;
-  text-align: center;
-}
-
-/* Personality Description Popover Tooltip */
-.badge-personality-tooltip {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(270px, 86vw);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  padding: 10px 12px;
-  z-index: 100;
-  text-align: left;
-  animation: tooltipFadeIn 160ms ease-out forwards;
-}
-
-@keyframes tooltipFadeIn {
-  from { opacity: 0; transform: translate(-50%, -4px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
-}
-
-.tooltip-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.tooltip-title {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-primary);
-}
-
-.tooltip-close-btn {
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.tooltip-body {
-  font-size: 11px;
-  color: var(--color-text-primary);
-  line-height: 1.45;
-  margin: 0;
-  font-style: italic;
-}
 
 /* ==========================================================================
    Batch 6: Collapsible Appearance (Warna & Pola Bulu) Section
@@ -2123,8 +1950,8 @@ input, select, textarea {
 
 .cat-photo-marker-frame-wrap {
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2132,8 +1959,11 @@ input, select, textarea {
 
 .cat-photo-marker-inner-circle {
   position: absolute;
-  width: 36px;
-  height: 36px;
+  width: 29px;
+  height: 29px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
   overflow: hidden;
   background-color: var(--color-surface);
@@ -2179,234 +2009,96 @@ input, select, textarea {
 }
 
 /* ==========================================================================
-   Colour Badge Selector Component
+   Colour Badge Horizontal Row Selector
    ========================================================================== */
 
 .colour-badge-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-}
-
-.colour-badge-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
   width: 100%;
 }
 
-@media (max-width: 420px) {
-  .colour-badge-grid {
-    gap: 8px;
+.colour-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 10px 8px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.colour-badge-row::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .colour-badge-row {
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 10px 8px;
   }
 }
 
-.colour-badge-card {
+.colour-badge-btn {
   position: relative;
-  background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 10px 6px 8px;
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
   cursor: pointer;
   outline: none;
-  transition: all var(--transition-fast);
+  border-radius: 50%;
+  transition: transform var(--transition-fast);
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
 
-.colour-badge-card:hover {
-  border-color: var(--color-primary-light, #ea8a68);
-  background: var(--color-surface-hover, #fdfaf7);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
+.colour-badge-btn:hover {
+  transform: scale(1.06);
 }
 
-.colour-badge-card:focus-visible {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(217, 107, 67, 0.2);
+.colour-badge-btn:focus-visible {
+  outline: 2px dashed #0A7EA4;
+  outline-offset: 4px;
 }
 
-.colour-badge-card.selected {
-  border-color: var(--color-primary);
-  background-color: rgba(217, 107, 67, 0.05);
-  box-shadow: 0 0 0 1px var(--color-primary), var(--shadow-sm);
-}
-
-.badge-card-check {
+.badge-select-ring {
   position: absolute;
-  top: 6px;
-  left: 6px;
-  width: 18px;
-  height: 18px;
+  inset: -3px;
   border-radius: 50%;
-  background: var(--color-primary);
-  color: #FFFFFF;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 1px 4px rgba(217, 107, 67, 0.4);
-  z-index: 5;
+  border: 3.5px solid #2D8A57;
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: 0 0 0 1.5px rgba(45, 138, 87, 0.15);
 }
 
-.badge-info-btn {
+.colour-badge-btn.selected .badge-select-ring {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.badge-btn-img {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-  transition: all var(--transition-fast);
-  z-index: 5;
-}
-
-.badge-info-btn:hover,
-.badge-info-btn.active {
-  background: var(--color-primary);
-  color: #FFFFFF;
-  border-color: var(--color-primary);
-}
-
-.badge-card-avatar-wrap {
-  width: 68px;
-  height: 68px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 4px;
-}
-
-@media (max-width: 420px) {
-  .badge-card-avatar-wrap {
-    width: 58px;
-    height: 58px;
-  }
-}
-
-.badge-card-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  line-height: 1.2;
-}
-
-.badge-nickname {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-}
-
-.badge-epithet {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-}
-
-@media (max-width: 420px) {
-  .badge-nickname {
-    font-size: 12px;
-  }
-  .badge-epithet {
-    font-size: 10px;
-  }
-}
-
-/* Personality Description Tooltip / Popover */
-.badge-personality-tooltip {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: 240px;
-  background: #FFFDF9;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 10px 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  z-index: 30;
-  text-align: left;
-  animation: tooltipFadeIn 0.15s ease-out;
-}
-
-@keyframes tooltipFadeIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 4px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-}
-
-.badge-personality-tooltip::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border-width: 6px;
-  border-style: solid;
-  border-color: #FFFDF9 transparent transparent transparent;
-}
-
-.tooltip-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--color-border-subtle, #eee);
-}
-
-.tooltip-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-primary);
-}
-
-.tooltip-close-btn {
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-}
-
-.tooltip-close-btn:hover {
-  background: var(--color-surface-subtle);
-  color: var(--color-text-primary);
-}
-
-.tooltip-body {
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-
-.colour-badge-helper {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-  margin: 4px 0 0 2px;
-  font-style: italic;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 2;
 }
 
 /* ==========================================================================

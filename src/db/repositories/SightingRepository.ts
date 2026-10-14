@@ -69,16 +69,20 @@ export class SightingRepository {
   }
 
   /**
-   * Get all sightings for a specific cat, ordered from newest to oldest
+   * Get all sightings for a specific cat, ordered from newest to oldest (reverse chronological)
    */
   async getByCatId(catId: string): Promise<Sighting[]> {
     if (!catId) return [];
     try {
-      return await this.db.sightings
+      const sightings = await this.db.sightings
         .where('catId')
         .equals(catId)
-        .reverse()
-        .sortBy('spottedAt');
+        .toArray();
+
+      // Sort newest to oldest
+      return sightings.sort(
+        (a, b) => (new Date(b.spottedAt).getTime() || 0) - (new Date(a.spottedAt).getTime() || 0)
+      );
     } catch (err) {
       throw new DatabaseError(`Failed to fetch sightings for cat "${catId}".`, err);
     }

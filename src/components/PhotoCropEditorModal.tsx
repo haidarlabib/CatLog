@@ -280,7 +280,7 @@ export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
                   Pratinjau Peta
                 </span>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ width: '48px', height: '48px' }}>
+                  <div style={{ width: '56px', height: '56px' }}>
                     <CatPhotoImg
                       src={imageUrl}
                       alt="Pratinjau Peta"

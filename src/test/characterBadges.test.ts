@@ -25,12 +25,12 @@ describe('Batch 6: Character Badge Frames & Collapsible Coat Appearance', () => 
 
       const assetPaths = CHARACTER_BADGES.map((b) => b.assetPath);
       expect(assetPaths).toEqual([
-        '/borders/white_border.png',
-        '/borders/orange_border.png',
-        '/borders/pink_border.png',
-        '/borders/blue_border.png',
-        '/borders/green_border.png',
-        '/borders/red_border.png',
+        '/borders/putih.png',
+        '/borders/kuning.png',
+        '/borders/pink.png',
+        '/borders/biru.png',
+        '/borders/hijau.png',
+        '/borders/merah.png',
       ]);
     });
 
@@ -99,11 +99,14 @@ describe('Batch 6: Character Badge Frames & Collapsible Coat Appearance', () => 
     });
 
     it('resolves historical legacy color names to character badges', () => {
-      // Terracotta / Orange -> Lil Boss
+      // Terracotta / Orange / Yellow / Kuning -> Lil Boss (with kuning.png)
       expect(resolveBadge('terracotta').id).toBe('lil-boss');
       expect(resolveBadge('Terracotta').id).toBe('lil-boss');
       expect(resolveBadge('ring-terracotta').id).toBe('lil-boss');
       expect(resolveBadge('ring-amber').id).toBe('lil-boss');
+      expect(resolveBadge('yellow').id).toBe('lil-boss');
+      expect(resolveBadge('Kuning').id).toBe('lil-boss');
+      expect(resolveBadge('ring-yellow').id).toBe('lil-boss');
 
       // Blue / Biru -> Bluebell
       expect(resolveBadge('blue').id).toBe('bluebell');
@@ -123,18 +126,19 @@ describe('Batch 6: Character Badge Frames & Collapsible Coat Appearance', () => 
       expect(resolveBadge('ring-green').id).toBe('clover');
       expect(resolveBadge('ring-emerald').id).toBe('clover');
 
-      // Yellow / Kuning -> Oopsie (nearest available existing frame)
-      expect(resolveBadge('yellow').id).toBe('oopsie');
-      expect(resolveBadge('Kuning').id).toBe('oopsie');
-      expect(resolveBadge('ring-yellow').id).toBe('oopsie');
+      // White / Putih -> Oopsie
+      expect(resolveBadge('white').id).toBe('oopsie');
+      expect(resolveBadge('Putih').id).toBe('oopsie');
+      expect(resolveBadge('ring-white').id).toBe('oopsie');
     });
 
     it('resolves historical hex codes to corresponding character badges', () => {
+      expect(resolveBadge('#EAB308').id).toBe('lil-boss'); // yellow/gold
       expect(resolveBadge('#D96B43').id).toBe('lil-boss'); // terracotta
       expect(resolveBadge('#3B82F6').id).toBe('bluebell'); // blue
       expect(resolveBadge('#EC4899').id).toBe('pinkie');   // pink
-      expect(resolveBadge('#10B981').id).toBe('clover');   // green
-      expect(resolveBadge('#F59E0B').id).toBe('oopsie');   // amber/yellow fallback
+      expect(resolveBadge('#16A34A').id).toBe('clover');   // green
+      expect(resolveBadge('#94A3B8').id).toBe('oopsie');   // white/pearl
     });
 
     it('safely falls back to Oopsie for missing, null, undefined, or unknown badge values', () => {
@@ -254,7 +258,7 @@ describe('Batch 6: Character Badge Frames & Collapsible Coat Appearance', () => 
       // Test map marker badge resolution
       const resolved = resolveBadge(markers[0].badgeRing);
       expect(resolved.id).toBe('bluebell');
-      expect(resolved.assetPath).toBe('/borders/blue_border.png');
+      expect(resolved.assetPath).toBe('/borders/biru.png');
       expect(resolved.nickname).toBe('Bluebell');
       expect(resolved.epithet).toBe('Si Lucu');
     });
@@ -277,10 +281,10 @@ describe('Batch 6: Character Badge Frames & Collapsible Coat Appearance', () => 
       expect(markers).toHaveLength(1);
       expect(markers[0].badgeRing).toBe('Terracotta');
 
-      // Legacy value resolves cleanly to Lil Boss with orange_border.png
+      // Legacy value resolves cleanly to Lil Boss with kuning.png
       const resolved = resolveBadge(markers[0].badgeRing);
       expect(resolved.id).toBe('lil-boss');
-      expect(resolved.assetPath).toBe('/borders/orange_border.png');
+      expect(resolved.assetPath).toBe('/borders/kuning.png');
       expect(resolved.nickname).toBe('Lil Boss');
     });
   });
@@ -294,4 +298,68 @@ describe('Batch 6: Character Badge Frames & Collapsible Coat Appearance', () => 
       expect(formatAppearanceLabel('custom-color')).toBe('custom-color');
     });
   });
+
+  describe('6. Batch 6.3 Horizontal Row Badge Selector & Asset Calibration', () => {
+    it('defines per-asset calibration parameters for all six character badges', () => {
+      for (const badge of CHARACTER_BADGES) {
+        expect(badge.calibration).toBeDefined();
+        expect(badge.calibration.frameScale).toBeGreaterThanOrEqual(0.9);
+        expect(badge.calibration.frameScale).toBeLessThanOrEqual(1.2);
+        expect(badge.calibration.photoDiameter).toBeGreaterThanOrEqual(40);
+        expect(badge.calibration.photoDiameter).toBeLessThanOrEqual(65);
+        expect(badge.calibration.photoCenterX).toBeGreaterThanOrEqual(45);
+        expect(badge.calibration.photoCenterX).toBeLessThanOrEqual(55);
+        expect(badge.calibration.photoCenterY).toBeGreaterThanOrEqual(45);
+        expect(badge.calibration.photoCenterY).toBeLessThanOrEqual(55);
+      }
+    });
+
+    it('renders 6 options in a single horizontal row with direct PNGs, circular ring, and no cards or helper text', async () => {
+      const { renderToString } = await import('react-dom/server');
+      const { BadgeSelector } = await import('../components/BadgeSelector');
+
+      const React = await import('react');
+      const html = renderToString(
+        React.createElement(BadgeSelector, {
+          selectedBadgeId: 'lil-boss',
+          onSelect: () => {},
+        })
+      );
+
+      // Verify horizontal row layout container
+      expect(html).toContain('colour-badge-row');
+      expect(html).not.toContain('colour-badge-grid');
+
+      // Verify all 6 options are present with accessible radio roles and IDs
+      expect(html).toContain('id="badge-option-oopsie"');
+      expect(html).toContain('id="badge-option-lil-boss"');
+      expect(html).toContain('id="badge-option-pinkie"');
+      expect(html).toContain('id="badge-option-bluebell"');
+      expect(html).toContain('id="badge-option-clover"');
+      expect(html).toContain('id="badge-option-rascal"');
+
+      // Verify selected state has circular ring and .selected class
+      expect(html).toContain('colour-badge-btn selected');
+      expect(html).toContain('badge-select-ring');
+
+      // Verify direct PNG image asset
+      expect(html).toContain('badge-btn-img');
+
+      // Verify NO rectangular cards, NO center circles, NO checkmark badges
+      expect(html).not.toContain('colour-badge-card');
+      expect(html).not.toContain('badge-frame-center');
+      expect(html).not.toContain('badge-card-check');
+
+      // Verify NO text, nicknames, epithets, info buttons, or tooltips
+      expect(html).not.toContain('badge-nickname');
+      expect(html).not.toContain('badge-epithet');
+      expect(html).not.toContain('badge-info-btn');
+      expect(html).not.toContain('badge-personality-popover');
+      expect(html).not.toContain('badge-personality-tooltip');
+
+      // Verify helper text is COMPLETELY removed
+      expect(html).not.toContain('Pilih satu badge untuk penanda kucingmu.');
+    });
+  });
 });
+

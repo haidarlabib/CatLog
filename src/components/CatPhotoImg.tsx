@@ -109,22 +109,23 @@ export const CatPhotoImg: React.FC<CatPhotoImgProps> = ({
           ...style,
         }}
       >
-        {/* Inner Circular Avatar */}
+        {/* Inner Circular Avatar with per-asset aperture calibration */}
         <div
           style={{
             position: 'absolute',
-            width: '74%',
-            height: '74%',
-            top: '50%',
-            left: '50%',
+            width: `${badge.calibration?.photoDiameter ?? 52}%`,
+            height: `${badge.calibration?.photoDiameter ?? 52}%`,
+            top: `${badge.calibration?.photoCenterY ?? 50}%`,
+            left: `${badge.calibration?.photoCenterX ?? 50}%`,
             transform: 'translate(-50%, -50%)',
             borderRadius: '50%',
             overflow: 'hidden',
             backgroundColor: 'var(--color-surface)',
-            boxShadow: `0 2px 6px ${badge.hex}33`,
+            boxShadow: `0 1px 3px rgba(0, 0, 0, 0.12)`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            zIndex: 1,
           }}
         >
           {isLoading ? (
@@ -157,6 +158,7 @@ export const CatPhotoImg: React.FC<CatPhotoImgProps> = ({
             width: '100%',
             height: '100%',
             objectFit: 'contain',
+            transform: `scale(${badge.calibration?.frameScale ?? 1.0})`,
             pointerEvents: 'none',
             zIndex: 2,
           }}

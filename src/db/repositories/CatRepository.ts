@@ -216,8 +216,11 @@ export class CatRepository {
       const sightings = await this.db.sightings
         .where('catId')
         .equals(id)
-        .reverse()
-        .sortBy('spottedAt');
+        .toArray();
+
+      sightings.sort(
+        (a, b) => (new Date(b.spottedAt).getTime() || 0) - (new Date(a.spottedAt).getTime() || 0)
+      );
 
       const latestSighting = sightings.length > 0 ? sightings[0] : null;
 

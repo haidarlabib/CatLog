@@ -101,12 +101,22 @@ export const MapPage: React.FC = () => {
       setSelectedMarker(null);
     });
 
-    // Invalidate size once rendered
-    setTimeout(() => {
+    // Invalidate size on initial mount and when container dimensions change
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    });
+
+    resizeObserver.observe(mapContainerRef.current);
+
+    // Initial size invalidation check
+    requestAnimationFrame(() => {
       map.invalidateSize();
-    }, 200);
+    });
 
     return () => {
+      resizeObserver.disconnect();
       map.remove();
       mapInstanceRef.current = null;
       markersLayerRef.current = null;
@@ -153,21 +163,22 @@ export const MapPage: React.FC = () => {
         ? `<img src="${marker.photoUrl}" alt="${marker.catName}" style="object-position: ${objectPosition}; ${transform}" />`
         : `<div class="fallback-icon" style="color: ${badge.hex}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4-3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4 3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm-9 4c-3 0-5 2-5 5 0 2 2 3 5 3s5-1 5-3c0-3-2-5-5-5z"/></svg></div>`;
 
+      const cal = badge.calibration;
       const customIcon = L.divIcon({
         className: 'cat-map-marker-container',
         html: `
           <div class="cat-photo-marker-pin ${isSelected ? 'selected' : ''}" id="marker-${marker.sightingId}">
             <div class="cat-photo-marker-frame-wrap">
-              <div class="cat-photo-marker-inner-circle">
+              <div class="cat-photo-marker-inner-circle" style="width: ${cal.photoDiameter}%; height: ${cal.photoDiameter}%; top: ${cal.photoCenterY}%; left: ${cal.photoCenterX}%;">
                 ${photoContent}
               </div>
-              <img class="cat-photo-marker-badge-img" src="${badge.assetPath}" alt="${badge.nickname}" />
+              <img class="cat-photo-marker-badge-img" src="${badge.assetPath}" alt="${badge.nickname}" style="transform: scale(${cal.frameScale});" />
             </div>
             <div class="cat-photo-marker-arrow" style="border-top-color: ${badge.hex};"></div>
           </div>
         `,
-        iconSize: [50, 56],
-        iconAnchor: [25, 56],
+        iconSize: [52, 57],
+        iconAnchor: [26, 57],
       });
 
       const leafletMarker = L.marker([marker.latitude, marker.longitude], {
@@ -184,12 +195,19 @@ export const MapPage: React.FC = () => {
       layer.addLayer(leafletMarker);
     });
 
-    // Auto fit bounds to markers if available
+    // Auto fit bounds to markers if available and container has valid dimensions
     if (latLngBounds.length > 0) {
-      map.fitBounds(latLngBounds as L.LatLngBoundsExpression, {
-        padding: [60, 60],
-        maxZoom: 15,
-      });
+      const size = map.getSize();
+      if (size.x > 80 && size.y > 80) {
+        try {
+          map.fitBounds(latLngBounds as L.LatLngBoundsExpression, {
+            padding: [40, 40],
+            maxZoom: 15,
+          });
+        } catch {
+          // Graceful fallback if bounds calculation fails
+        }
+      }
     }
   }, [markersData, selectedMarker]);
 

@@ -3,6 +3,17 @@
  * coat colors, and patterns.
  */
 
+export interface BadgeCalibration {
+  /** Normalization scale for apparent frame diameter (1.00 - 1.05) */
+  frameScale: number;
+  /** Percentage of container width for inner circular photo (48% - 55%) */
+  photoDiameter: number;
+  /** Percentage X center of photo aperture */
+  photoCenterX: number;
+  /** Percentage Y center of photo aperture */
+  photoCenterY: number;
+}
+
 export interface CharacterBadge {
   id: string;
   nickname: string;
@@ -10,6 +21,7 @@ export interface CharacterBadge {
   description: string;
   assetPath: string;
   hex: string;
+  calibration: BadgeCalibration;
 }
 
 export const CHARACTER_BADGES: CharacterBadge[] = [
@@ -18,48 +30,84 @@ export const CHARACTER_BADGES: CharacterBadge[] = [
     nickname: 'Oopsie',
     epithet: 'Si Oon',
     description: 'Polos, santai, dan sedikit bingung. Suka bengong, penasaran sama hal random, dan sering bertingkah konyol tanpa sadar.',
-    assetPath: '/borders/white_border.png',
+    assetPath: '/borders/putih.png',
     hex: '#94A3B8',
+    calibration: {
+      frameScale: 1.00,
+      photoDiameter: 58,
+      photoCenterX: 49.5,
+      photoCenterY: 49.8,
+    },
   },
   {
     id: 'lil-boss',
     nickname: 'Lil Boss',
     epithet: 'Si Bos Nakal',
     description: 'Percaya diri, sok berkuasa, dan suka bikin ulah. Tingkahnya jahil, selalu ingin jadi pusat perhatian, tetapi tetap menggemaskan.',
-    assetPath: '/borders/orange_border.png',
-    hex: '#D96B43',
+    assetPath: '/borders/kuning.png',
+    hex: '#EAB308',
+    calibration: {
+      frameScale: 1.00,
+      photoDiameter: 58,
+      photoCenterX: 50.0,
+      photoCenterY: 49.5,
+    },
   },
   {
     id: 'pinkie',
     nickname: 'Pinkie',
     epithet: 'Si Manis',
     description: 'Lembut, manja, dan penuh pesona. Suka cari perhatian, senang dielus, dan punya tingkah yang bikin siapa pun gemas.',
-    assetPath: '/borders/pink_border.png',
-    hex: '#D94680',
+    assetPath: '/borders/pink.png',
+    hex: '#EC4899',
+    calibration: {
+      frameScale: 1.03,
+      photoDiameter: 54,
+      photoCenterX: 50.5,
+      photoCenterY: 51.0,
+    },
   },
   {
     id: 'bluebell',
     nickname: 'Bluebell',
     epithet: 'Si Lucu',
     description: 'Manis, menggemaskan, dan punya daya tarik tersendiri. Tingkahnya spontan, ekspresif, dan bikin orang susah menahan senyum.',
-    assetPath: '/borders/blue_border.png',
-    hex: '#2B799E',
+    assetPath: '/borders/biru.png',
+    hex: '#3B82F6',
+    calibration: {
+      frameScale: 1.04,
+      photoDiameter: 55,
+      photoCenterX: 50.0,
+      photoCenterY: 51.0,
+    },
   },
   {
     id: 'clover',
     nickname: 'Clover',
     epithet: 'Si Ramah',
     description: 'Hangat, bersahabat, dan mudah didekati. Suka menyapa, nyaman berada di dekat manusia, dan punya aura yang menenangkan.',
-    assetPath: '/borders/green_border.png',
-    hex: '#2E8B57',
+    assetPath: '/borders/hijau.png',
+    hex: '#16A34A',
+    calibration: {
+      frameScale: 1.03,
+      photoDiameter: 52,
+      photoCenterX: 50.8,
+      photoCenterY: 51.5,
+    },
   },
   {
     id: 'rascal',
     nickname: 'Rascal',
     epithet: 'Si Galak',
     description: 'Jutek, berani, dan sedikit temperamental. Suka pasang muka judes, punya pendirian kuat, tetapi tetap punya sisi lucu yang bikin gemas.',
-    assetPath: '/borders/red_border.png',
+    assetPath: '/borders/merah.png',
     hex: '#DC2626',
+    calibration: {
+      frameScale: 1.00,
+      photoDiameter: 62,
+      photoCenterX: 49.5,
+      photoCenterY: 49.5,
+    },
   },
 ];
 
@@ -76,7 +124,7 @@ export const BADGE_RING_OPTIONS: BadgeRingOption[] = CHARACTER_BADGES.map((b) =>
 }));
 
 export const DEFAULT_BADGE_RING = 'lil-boss';
-export const DEFAULT_BADGE_COLOR_HEX = '#D96B43';
+export const DEFAULT_BADGE_COLOR_HEX = '#EAB308';
 
 /**
  * Resolves a badge identifier, legacy color string, or hex code to a CharacterBadge.
@@ -104,10 +152,17 @@ export function resolveBadge(badgeIdOrLegacy?: string | null): CharacterBadge {
     raw === 'terracotta' ||
     raw === 'orange' ||
     raw === 'oranye' ||
+    raw === 'yellow' ||
+    raw === 'kuning' ||
+    raw === '#eab308' ||
+    raw === '#d97706' ||
+    raw === '#f59e0b' ||
     raw === '#d96b43' ||
     raw === '#f97316' ||
     raw.includes('terracotta') ||
-    raw.includes('amber')
+    raw.includes('amber') ||
+    raw.includes('yellow') ||
+    raw.includes('kuning')
   ) {
     return CHARACTER_BADGES.find((b) => b.id === 'lil-boss')!;
   }
@@ -139,6 +194,7 @@ export function resolveBadge(badgeIdOrLegacy?: string | null): CharacterBadge {
     raw === 'green' ||
     raw === 'hijau' ||
     raw === '#2e8b57' ||
+    raw === '#16a34a' ||
     raw === '#10b981' ||
     raw.includes('green') ||
     raw.includes('hijau') ||
@@ -159,12 +215,9 @@ export function resolveBadge(badgeIdOrLegacy?: string | null): CharacterBadge {
   }
 
   if (
-    raw === 'yellow' ||
-    raw === 'kuning' ||
-    raw === '#d97706' ||
-    raw === '#f59e0b' ||
-    raw.includes('yellow') ||
-    raw.includes('kuning') ||
+    raw === 'white' ||
+    raw === 'putih' ||
+    raw === '#94a3b8' ||
     raw.includes('white') ||
     raw.includes('putih')
   ) {
