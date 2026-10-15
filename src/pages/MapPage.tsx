@@ -13,7 +13,14 @@ import {
 } from 'lucide-react';
 import { defaultMapConfig } from '../config/mapConfig';
 import { mapService, type MapMarkerData } from '../services/mapService';
-import { getCurrentDeviceLocation, groupMarkersBy50mRadius, computeClusterStackModel, type MarkerGroup } from '../utils/geo';
+import { 
+  getCurrentDeviceLocation, 
+  groupMarkersBy50mRadius, 
+  computeClusterStackModel, 
+  isValidCoordinates,
+  type GeoLocationResult,
+  type MarkerGroup 
+} from '../utils/geo';
 import { resolveBadge, formatBreedLabel, formatCatTraitLine } from '../config/catAppearance';
 import { CatPhotoImg } from '../components/CatPhotoImg';
 import { useUserProfile, type UserProfile } from '../utils/useUserProfile';
@@ -39,21 +46,23 @@ function createUserAvatarIcon(profile: UserProfile): L.DivIcon {
   const frameClass = profile.photoUrl ? 'user-avatar-frame' : 'user-avatar-frame user-avatar-frame--initials';
 
   const html = `
-    <div class="user-avatar-marker" title="${escapedName}">
-      <div class="user-avatar-pulse-ring"></div>
-      <div class="${frameClass}">
-        ${avatarInner}
+    <div class="user-avatar-marker" title="${escapedName}" id="user-location-avatar">
+      <div class="user-avatar-nickname-pill">${escapedName}</div>
+      <div class="user-avatar-body">
+        <div class="${frameClass}">
+          ${avatarInner}
+        </div>
+        <div class="user-avatar-pointer"></div>
       </div>
-      <div class="user-avatar-dot-indicator"></div>
     </div>
   `;
 
   return L.divIcon({
     className: 'user-avatar-container',
     html,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
-    popupAnchor: [0, -22],
+    iconSize: [70, 63],
+    iconAnchor: [35, 63],
+    popupAnchor: [0, -63],
   });
 }
 
@@ -170,6 +179,7 @@ export const MapPage: React.FC = () => {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
+  const lastKnownUserPosRef = useRef<GeoLocationResult | null>(null);
   const hasInitialFitRef = useRef(false);
   const markersInstancesRef = useRef<Map<string, L.Marker>>(new Map());
 
@@ -270,8 +280,12 @@ export const MapPage: React.FC = () => {
       setAreaCatListGroup(null);
     });
 
-    // Track zoom and move to recalculate clusters dynamically
+    // Track zoom and move to recalculate clusters dynamically & cache view state
     map.on('zoomend moveend', () => {
+      cachedMapViewState = {
+        center: [map.getCenter().lat, map.getCenter().lng],
+        zoom: map.getZoom(),
+      };
       setMapVersion((v) => v + 1);
     });
 
@@ -538,12 +552,52 @@ export const MapPage: React.FC = () => {
     setGeoLoading(true);
     setGeoNotice(null);
 
+    const map = mapInstanceRef.current;
+    if (!map) {
+      setGeoLoading(false);
+      return;
+    }
+
+    // Reuse existing valid location immediately if available (fast response without zoom-out)
+    if (
+      lastKnownUserPosRef.current &&
+      isValidCoordinates(lastKnownUserPosRef.current.latitude, lastKnownUserPosRef.current.longitude)
+    ) {
+      const cached = lastKnownUserPosRef.current;
+      hasInitialFitRef.current = true;
+      const currentZoom = map.getZoom();
+      const targetZoom = Math.max(currentZoom, 17);
+      map.flyTo([cached.latitude, cached.longitude], targetZoom, {
+        animate: true,
+        duration: 0.6,
+      });
+      cachedMapViewState = {
+        center: [cached.latitude, cached.longitude],
+        zoom: targetZoom,
+      };
+    }
+
     try {
       const pos = await getCurrentDeviceLocation();
-      const map = mapInstanceRef.current;
-      if (!map) return;
+      if (!isValidCoordinates(pos.latitude, pos.longitude)) {
+        throw new Error('Koordinat lokasi tidak valid.');
+      }
 
-      map.setView([pos.latitude, pos.longitude], 16, { animate: true });
+      lastKnownUserPosRef.current = pos;
+      hasInitialFitRef.current = true;
+
+      const currentZoom = map.getZoom();
+      const targetZoom = Math.max(currentZoom, 17);
+
+      map.flyTo([pos.latitude, pos.longitude], targetZoom, {
+        animate: true,
+        duration: 0.7,
+      });
+
+      cachedMapViewState = {
+        center: [pos.latitude, pos.longitude],
+        zoom: targetZoom,
+      };
 
       // Add or update personal avatar marker
       if (!userMarkerRef.current) {
@@ -564,8 +618,7 @@ export const MapPage: React.FC = () => {
       `;
       userMarkerRef.current.bindPopup(popupHtml);
 
-      setGeoNotice(`Lokasi terpusat ke posisi Anda (±${pos.accuracy}m)`);
-      setTimeout(() => setGeoNotice(null), 3500);
+      // Note: No success toast per Requirement 3!
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Lokasi tidak tersedia.';
       setGeoNotice(msg);
@@ -686,12 +739,12 @@ export const MapPage: React.FC = () => {
         )}
 
         {/* Empty State Overlay with Oyen Si Penasaran if no sightings with coordinates */}
-        {!isLoading && markersData.length === 0 && (
+        {!isLoading && !errorMsg && !tileError && markersData.length === 0 && (
           <OyenEmptyState
             variant="penasaran"
-            title="Peta masih sepi nih!"
-            description="Yuk, jalan-jalan dan tandai kucing pertama yang kamu temui di sekitarmu."
-            ctaLabel="Tambah Kucing Pertama"
+            title="Peta masih sepi, nih!"
+            description="Yuk, tandai kucing pertama yang kamu temui."
+            ctaLabel="Tambah Kucing"
             onCtaClick={() => navigate('/cats/new')}
             overlay
           />

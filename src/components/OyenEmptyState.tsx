@@ -51,8 +51,10 @@ export const OyenEmptyState: React.FC<OyenEmptyStateProps> = ({
           className="oyen-mascot-img"
           draggable={false}
         />
-        <h2 className="oyen-title">{title}</h2>
-        {description && <p className="oyen-desc">{description}</p>}
+        <div className="oyen-text-group">
+          <h2 className="oyen-title">{title}</h2>
+          {description && <p className="oyen-desc">{description}</p>}
+        </div>
         {ctaLabel && onCtaClick && (
           <button
             type="button"
