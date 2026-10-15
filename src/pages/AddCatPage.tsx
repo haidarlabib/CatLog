@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { defaultMapConfig } from '../config/mapConfig';
 import { catService } from '../services/catService';
-import { getCurrentDeviceLocation, reverseGeocode, formatCoordinates, isValidCoordinates, type GeoLocationError } from '../utils/geo';
+import { getCurrentDeviceLocation, reverseGeocode, isValidCoordinates, type GeoLocationError } from '../utils/geo';
 import { MapLocationPickerModal } from '../components/MapLocationPickerModal';
 import { CatPhotoImg } from '../components/CatPhotoImg';
 import { BadgeSelector } from '../components/BadgeSelector';
@@ -125,10 +125,10 @@ export const AddCatPage: React.FC = () => {
       if (place) {
         setLocationName(place);
       } else {
-        setLocationName(formatCoordinates(lat, lng));
+        setLocationName('');
       }
     } catch {
-      setLocationName(formatCoordinates(lat, lng));
+      setLocationName('');
     } finally {
       setIsResolvingLocation(false);
     }
@@ -225,7 +225,8 @@ export const AddCatPage: React.FC = () => {
 
       L.tileLayer(defaultMapConfig.tileProvider.url, {
         maxZoom: defaultMapConfig.tileProvider.maxZoom,
-        subdomains: defaultMapConfig.tileProvider.subdomains || ['a', 'b', 'c'],
+        maxNativeZoom: defaultMapConfig.tileProvider.maxNativeZoom ?? 18,
+        subdomains: defaultMapConfig.tileProvider.subdomains || ['a', 'b', 'c', 'd'],
       }).addTo(map);
 
       const marker = L.marker([latitude, longitude], { icon: customIcon }).addTo(map);
@@ -239,10 +240,14 @@ export const AddCatPage: React.FC = () => {
       }
     }
 
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       mapInstanceRef.current?.invalidateSize();
     }, 150);
-  }, [latitude, longitude, badgeRing]);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [latitude, longitude, badgeRing, photoDraft?.previewUrl, photoDraft?.crop]);
 
   // Clean up Leaflet on unmount
   useEffect(() => {
@@ -420,160 +425,136 @@ export const AddCatPage: React.FC = () => {
 
       <form onSubmit={handleSubmit} className="form-card" id="add-cat-form" style={{ gap: 'var(--space-4)' }}>
         
-        {/* 1. Bagian Foto Kucing (Approved Preview - ABOVE Location Section) */}
-        <div className="form-group" id="approved-cat-photo-section">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-            <h2 className="form-section-header" style={{ margin: 0 }}>
-              <Camera size={18} style={{ color: 'var(--color-primary)' }} />
-              <span>Foto Kucing</span>
-            </h2>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={handleChangePhoto}
-              id="btn-change-photo"
-              style={{ fontSize: 'var(--font-size-xs)', padding: '5px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}
-            >
-              <RefreshCw size={13} />
-              <span>Ganti Foto</span>
-            </button>
-          </div>
-
-          <div className="approved-photo-card" id="approved-cat-photo-preview">
-            {/* 1:1 Square Profile Preview */}
-            <div className="approved-photo-square-container">
-              <CatPhotoImg
-                src={photoDraft.previewUrl}
-                alt="Foto Kucing Terpilih"
-                mode="square"
-                crop={photoDraft.crop}
-                style={{ width: '100%', height: '100%' }}
-              />
+        {/* Unified Dual-Panel: Foto Profil & Lokasi Kucing Preview */}
+        <div className="add-cat-dual-preview" id="add-cat-dual-preview">
+          {/* Panel Kiri: Foto Profil Kucing */}
+          <div className="preview-panel-card preview-panel-photo">
+            <div className="preview-panel-header">
+              <span className="preview-panel-title">
+                <Camera size={13} style={{ color: 'var(--color-primary)' }} />
+                <span>Foto Profil</span>
+              </span>
+              <button
+                type="button"
+                className="btn-secondary preview-panel-action"
+                onClick={handleChangePhoto}
+                id="btn-change-photo"
+                title="Ganti foto kucing"
+              >
+                <RefreshCw size={12} />
+                <span>Ubah Foto</span>
+              </button>
             </div>
 
-            {/* Synchronized Circular Map Marker Preview */}
-            <div className="approved-photo-sync-panel">
-              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                Penanda Peta
-              </span>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '4px 0' }}>
-                <div style={{ width: '64px', height: '64px' }}>
+            <div className="preview-photo-body">
+              <div className="preview-avatar-wrap">
+                <div style={{ width: '96px', height: '96px' }}>
                   <CatPhotoImg
                     src={photoDraft.previewUrl}
-                    alt="Penanda Peta"
+                    alt="Foto Profil Kucing"
                     mode="circle"
                     badgeId={badgeRing || null}
                     ringColor={badgeRing ? getBadgeColorHex(badgeRing) : 'var(--color-border)'}
                     crop={photoDraft.crop}
                   />
                 </div>
-                <div
-                  style={{
-                    width: 0,
-                    height: 0,
-                    borderLeft: '5px solid transparent',
-                    borderRight: '5px solid transparent',
-                    borderTop: `6px solid ${badgeRing ? getBadgeColorHex(badgeRing) : 'var(--color-border)'}`,
-                    marginTop: '-2px',
-                  }}
-                />
               </div>
-              <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', textAlign: 'center', lineHeight: 1.3 }}>
+              <span className="preview-badge-subtitle">
                 {badgeRing
                   ? `${resolveBadge(badgeRing).nickname} — ${resolveBadge(badgeRing).epithet}`
                   : 'Pilih Colour Badge di bawah'}
               </span>
             </div>
           </div>
-        </div>
 
-        {/* 2. Bagian Lokasi */}
-        <div className="form-group" id="add-cat-location-section">
-          <h2 className="form-section-header">
-            <MapPin size={18} style={{ color: 'var(--color-primary)' }} />
-            <span>Lokasi</span>
-          </h2>
-
-          {geoLoading && latitude === null ? (
-            <div className="location-loading-card" id="location-loading-indicator">
-              <div className="location-loading-spinner" />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <span style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>Mendeteksi lokasi...</span>
-                <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>Meminta koordinat GPS perangkat Anda</span>
-              </div>
-            </div>
-          ) : latitude !== null && longitude !== null ? (
-            <div className="location-compact-card" id="location-compact-preview">
-              <div ref={mapContainerRef} className="location-compact-map" id="add-cat-mini-map" />
-              <div className="location-compact-info">
-                <div className="location-compact-text">
-                  <div className="location-status-badge">
-                    <Navigation size={12} />
-                    <span>{locationSource === 'manual' ? 'Titik di Peta' : 'Lokasi saat ini'}</span>
-                  </div>
-                  <div className="location-address-line">
-                    {isResolvingLocation ? (
-                      <span style={{ color: 'var(--color-text-muted)' }}>Mencari alamat...</span>
-                    ) : locationName ? (
-                      <span>{locationName}</span>
-                    ) : (
-                      <span style={{ color: 'var(--color-text-muted)' }}>Alamat belum tersedia</span>
-                    )}
-                  </div>
-                  <span className="location-coords-subtle">
-                    {formatCoordinates(latitude, longitude)}
-                  </span>
-                </div>
+          {/* Panel Kanan: Lokasi Kucing */}
+          <div className="preview-panel-card preview-panel-location">
+            <div className="preview-panel-header">
+              <span className="preview-panel-title">
+                <MapPin size={13} style={{ color: 'var(--color-primary)' }} />
+                <span>Lokasi Kucing</span>
+              </span>
+              {latitude !== null && longitude !== null && (
                 <button
                   type="button"
-                  className="btn-secondary"
+                  className="btn-secondary preview-panel-action"
                   onClick={() => setShowMapPicker(true)}
                   id="btn-change-location"
-                  style={{ fontSize: 'var(--font-size-xs)', padding: '6px 12px', flexShrink: 0 }}
+                  title="Ubah titik lokasi di peta"
                 >
-                  <MapPin size={13} />
+                  <MapPin size={12} />
                   <span>Ubah Lokasi</span>
                 </button>
-              </div>
+              )}
             </div>
-          ) : (
-            <div className="location-fallback-card" id="location-fallback-box">
-              <div className="location-fallback-notice">
-                <AlertCircle size={16} color="var(--color-danger)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <span style={{ fontWeight: 600, fontSize: 'var(--font-size-xs)', color: 'var(--color-danger)' }}>
-                    Lokasi belum tersedia
-                  </span>
-                  <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
-                    {geoError || 'Akses lokasi peramban belum diizinkan atau tidak dapat ditentukan.'}
-                  </span>
+
+            <div className="preview-location-body">
+              {geoLoading && latitude === null ? (
+                <div className="preview-location-empty-box" id="location-loading-indicator">
+                  <div className="location-loading-spinner" />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 600, fontSize: 'var(--font-size-xs)' }}>Mendeteksi lokasi...</span>
+                    <span style={{ fontSize: '10.5px', color: 'var(--color-text-muted)' }}>Meminta GPS perangkat</span>
+                  </div>
                 </div>
-              </div>
-              <div className="location-fallback-actions">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={handleRequestGPS}
-                  disabled={geoLoading}
-                  id="btn-retry-gps"
-                  style={{ fontSize: 'var(--font-size-xs)', padding: '6px 12px' }}
-                >
-                  <Navigation size={13} className={geoLoading ? 'animate-spin' : ''} />
-                  <span>Coba lagi</span>
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={() => setShowMapPicker(true)}
-                  id="btn-pick-on-map"
-                  style={{ fontSize: 'var(--font-size-xs)', padding: '6px 14px', width: 'auto' }}
-                >
-                  <MapPin size={13} />
-                  <span>Pilih di Peta</span>
-                </button>
-              </div>
+              ) : latitude !== null && longitude !== null ? (
+                <>
+                  <div className="preview-mini-map-wrap">
+                    <div ref={mapContainerRef} className="preview-mini-map" id="add-cat-mini-map" />
+                  </div>
+                  <div className="preview-location-address-row">
+                    <Navigation size={12} style={{ color: 'var(--color-primary)', flexShrink: 0, marginTop: '2px' }} />
+                    <span className="preview-location-address-text">
+                      {isResolvingLocation ? (
+                        <span style={{ color: 'var(--color-text-muted)' }}>Mencari alamat...</span>
+                      ) : locationName ? (
+                        <span>{locationName}</span>
+                      ) : (
+                        <span style={{ color: 'var(--color-text-muted)' }}>Lokasi belum ditentukan</span>
+                      )}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="preview-location-empty-box" id="location-fallback-box">
+                  <MapPin size={22} style={{ color: 'var(--color-primary)' }} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                      Lokasi belum ditentukan
+                    </span>
+                    {geoError && (
+                      <span style={{ fontSize: '10px', color: 'var(--color-danger)', maxWidth: '200px' }}>
+                        {geoError}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      type="button"
+                      className="btn-secondary preview-panel-action"
+                      onClick={handleRequestGPS}
+                      disabled={geoLoading}
+                      id="btn-retry-gps"
+                      title="Coba deteksi GPS lagi"
+                    >
+                      <Navigation size={12} className={geoLoading ? 'animate-spin' : ''} />
+                      <span>GPS</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-primary preview-panel-action"
+                      onClick={() => setShowMapPicker(true)}
+                      id="btn-pick-on-map"
+                      style={{ width: 'auto' }}
+                    >
+                      <MapPin size={12} />
+                      <span>Pilih di Peta</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* B. Bagian Nama Kucing */}

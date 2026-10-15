@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import L from 'leaflet';
 import { 
   ArrowLeft, 
   Camera, 
@@ -10,14 +11,18 @@ import {
   Sparkles,
   Sliders,
   ChevronDown,
-  Palette
+  Palette,
+  Navigation,
+  MapPin
 } from 'lucide-react';
-import { catRepository } from '../db';
+import { catRepository, sightingRepository, photoRepository } from '../db';
 import { catService } from '../services/catService';
 import { CatPhotoImg } from '../components/CatPhotoImg';
 import { BadgeSelector } from '../components/BadgeSelector';
 import { compressImage, validateImageFile, DEFAULT_PHOTO_CROP, type PhotoCropData } from '../utils/image';
 import { PhotoCropEditorModal } from '../components/PhotoCropEditorModal';
+import { MapLocationPickerModal } from '../components/MapLocationPickerModal';
+import { defaultMapConfig } from '../config/mapConfig';
 import { 
   DEFAULT_BADGE_RING, 
   PRESET_COAT_COLORS, 
@@ -57,6 +62,21 @@ export const EditCatPage: React.FC = () => {
 
   const [notes, setNotes] = useState('');
 
+  // Location State
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [locationName, setLocationName] = useState<string>('');
+  const [isLocationChanged, setIsLocationChanged] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
+
+  // Existing photo preview & crop for mini-map marker
+  const [coverPhotoBlobUrl, setCoverPhotoBlobUrl] = useState<string | null>(null);
+  const [existingPhotoCrop, setExistingPhotoCrop] = useState<PhotoCropData>(DEFAULT_PHOTO_CROP);
+
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markerInstanceRef = useRef<L.Marker | null>(null);
+
   // New Photo Upload State
   const [selectedBlob, setSelectedBlob] = useState<Blob | null>(null);
   const [newPreviewUrl, setNewPreviewUrl] = useState<string | null>(null);
@@ -71,8 +91,11 @@ export const EditCatPage: React.FC = () => {
   useEffect(() => {
     if (!catId) return;
 
-    catRepository.getById(catId)
-      .then((c) => {
+    Promise.all([
+      catRepository.getById(catId),
+      sightingRepository.getByCatId(catId),
+    ])
+      .then(async ([c, sightings]) => {
         if (!c) {
           setErrorMsg('Profil kucing tidak ditemukan.');
           setIsLoading(false);
@@ -99,6 +122,33 @@ export const EditCatPage: React.FC = () => {
         setCustomPatterns(customPats);
 
         setNotes(c.notes || '');
+
+        // Populate location from latest sighting
+        if (sightings.length > 0 && sightings[0].latitude !== null && sightings[0].longitude !== null) {
+          setLatitude(sightings[0].latitude);
+          setLongitude(sightings[0].longitude);
+          setLocationName(sightings[0].locationName || '');
+        }
+
+        // Load cover photo blob for marker preview
+        if (c.coverPhotoId) {
+          try {
+            const photo = await photoRepository.getById(c.coverPhotoId);
+            if (photo?.blob) {
+              const url = URL.createObjectURL(photo.blob);
+              setCoverPhotoBlobUrl(url);
+              if (photo.focalX !== undefined || photo.focalY !== undefined || photo.zoom !== undefined) {
+                setExistingPhotoCrop({
+                  focalX: photo.focalX ?? 0.5,
+                  focalY: photo.focalY ?? 0.5,
+                  zoom: photo.zoom ?? 1.0,
+                });
+              }
+            }
+          } catch {
+            // Handle photo load error silently
+          }
+        }
       })
       .catch(() => {
         setErrorMsg('Gagal memuat profil untuk diedit.');
@@ -108,14 +158,103 @@ export const EditCatPage: React.FC = () => {
       });
   }, [catId]);
 
-  // Clean up Object URL
+  // Clean up Object URLs
   useEffect(() => {
     return () => {
       if (newPreviewUrl && newPreviewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(newPreviewUrl);
       }
+      if (coverPhotoBlobUrl && coverPhotoBlobUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(coverPhotoBlobUrl);
+      }
     };
-  }, [newPreviewUrl]);
+  }, [newPreviewUrl, coverPhotoBlobUrl]);
+
+  // Mini-map Leaflet Effect for Location Preview
+  useEffect(() => {
+    if (latitude === null || longitude === null || !mapContainerRef.current) return;
+
+    const badge = resolveBadge(badgeRing);
+    const activePhotoUrl = newPreviewUrl || coverPhotoBlobUrl;
+    const activeCrop = newPreviewUrl ? newPhotoCrop : existingPhotoCrop;
+
+    const focalX = activeCrop.focalX ?? 0.5;
+    const focalY = activeCrop.focalY ?? 0.5;
+    const zoom = activeCrop.zoom ?? 1.0;
+    const objectPosition = `${(focalX * 100).toFixed(1)}% ${(focalY * 100).toFixed(1)}%`;
+    const transform = zoom > 1.001 ? `transform: scale(${zoom.toFixed(2)}); transform-origin: ${objectPosition};` : '';
+
+    const photoContent = activePhotoUrl
+      ? `<img src="${activePhotoUrl}" alt="Marker Foto" style="width: 100%; height: 100%; object-fit: cover; object-position: ${objectPosition}; ${transform}" />`
+      : `<div class="fallback-icon" style="color: ${badge.hex};"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4-3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4 3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm-9 4c-3 0-5 2-5 5 0 2 2 3 5 3s5-1 5-3c0-3-2-5-5-5z"/></svg></div>`;
+
+    const cal = badge.calibration;
+
+    const customIcon = L.divIcon({
+      className: 'cat-map-marker-container',
+      html: `
+        <div class="cat-photo-marker-pin selected">
+          <div class="cat-photo-marker-frame-wrap">
+            <div class="cat-photo-marker-inner-circle" style="width: ${cal.photoDiameter}%; height: ${cal.photoDiameter}%; top: ${cal.photoCenterY}%; left: ${cal.photoCenterX}%;">
+              ${photoContent}
+            </div>
+            <img class="cat-photo-marker-badge-img" src="${badge.assetPath}" alt="${badge.nickname}" style="transform: scale(${cal.frameScale});" />
+          </div>
+          <div class="cat-photo-marker-arrow" style="border-top-color: ${badge.hex};"></div>
+        </div>
+      `,
+      iconSize: [52, 57],
+      iconAnchor: [26, 57],
+    });
+
+    if (!mapInstanceRef.current) {
+      const map = L.map(mapContainerRef.current, {
+        center: [latitude, longitude],
+        zoom: 17,
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        touchZoom: false,
+      });
+
+      L.tileLayer(defaultMapConfig.tileProvider.url, {
+        maxZoom: defaultMapConfig.tileProvider.maxZoom,
+        maxNativeZoom: defaultMapConfig.tileProvider.maxNativeZoom ?? 18,
+        subdomains: defaultMapConfig.tileProvider.subdomains || ['a', 'b', 'c', 'd'],
+      }).addTo(map);
+
+      const marker = L.marker([latitude, longitude], { icon: customIcon }).addTo(map);
+      markerInstanceRef.current = marker;
+      mapInstanceRef.current = map;
+    } else {
+      mapInstanceRef.current.setView([latitude, longitude], 17);
+      if (markerInstanceRef.current) {
+        markerInstanceRef.current.setLatLng([latitude, longitude]);
+        markerInstanceRef.current.setIcon(customIcon);
+      }
+    }
+
+    const timer = setTimeout(() => {
+      mapInstanceRef.current?.invalidateSize();
+    }, 150);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [latitude, longitude, badgeRing, newPreviewUrl, newPhotoCrop, coverPhotoBlobUrl, existingPhotoCrop]);
+
+  // Clean up Leaflet on unmount
+  useEffect(() => {
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        markerInstanceRef.current = null;
+      }
+    };
+  }, []);
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -231,6 +370,11 @@ export const EditCatPage: React.FC = () => {
         newPhotoFocalX: newPhotoCrop.focalX,
         newPhotoFocalY: newPhotoCrop.focalY,
         newPhotoZoom: newPhotoCrop.zoom,
+        ...(isLocationChanged ? {
+          latitude,
+          longitude,
+          locationName: locationName.trim() || undefined,
+        } : {}),
       });
 
       navigate(`/cats/${catId}`, {
@@ -325,6 +469,70 @@ export const EditCatPage: React.FC = () => {
                 aria-hidden="true"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Lokasi Kucing Preview & Edit Panel */}
+        <div className="preview-panel-card preview-panel-location" id="edit-cat-location-panel" style={{ width: '100%' }}>
+          <div className="preview-panel-header">
+            <span className="preview-panel-title">
+              <MapPin size={13} style={{ color: 'var(--color-primary)' }} />
+              <span>Lokasi Kucing</span>
+            </span>
+            {latitude !== null && longitude !== null && (
+              <button
+                type="button"
+                className="btn-secondary preview-panel-action"
+                onClick={() => setShowMapPicker(true)}
+                id="btn-change-location"
+                title="Ubah titik lokasi di peta"
+              >
+                <MapPin size={12} />
+                <span>Ubah Lokasi</span>
+              </button>
+            )}
+          </div>
+
+          <div className="preview-location-body">
+            {latitude !== null && longitude !== null ? (
+              <>
+                <div className="preview-mini-map-wrap">
+                  <div ref={mapContainerRef} className="preview-mini-map" id="edit-cat-mini-map" />
+                </div>
+                <div className="preview-location-address-row">
+                  <Navigation size={12} style={{ color: 'var(--color-primary)', flexShrink: 0, marginTop: '2px' }} />
+                  <span className="preview-location-address-text">
+                    {locationName ? (
+                      <span>{locationName}</span>
+                    ) : (
+                      <span style={{ color: 'var(--color-text-muted)' }}>Alamat belum tersedia</span>
+                    )}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="preview-location-empty-box" id="location-fallback-box">
+                <MapPin size={22} style={{ color: 'var(--color-primary)' }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                    Lokasi belum ditentukan
+                  </span>
+                  <span style={{ fontSize: '10.5px', color: 'var(--color-text-muted)' }}>
+                    Belum ada data koordinat untuk kucing ini
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="btn-primary preview-panel-action"
+                  onClick={() => setShowMapPicker(true)}
+                  id="btn-pick-on-map"
+                  style={{ width: 'auto' }}
+                >
+                  <MapPin size={12} />
+                  <span>Tentukan Lokasi di Peta</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -607,6 +815,23 @@ export const EditCatPage: React.FC = () => {
           badgeRingColor={getBadgeColorHex(badgeRing)}
           onSave={(crop) => setNewPhotoCrop(crop)}
           onClose={() => setShowCropModal(false)}
+        />
+      )}
+
+      {showMapPicker && (
+        <MapLocationPickerModal
+          initialLat={latitude}
+          initialLng={longitude}
+          onConfirm={({ latitude: lat, longitude: lng, address: resolvedAddr }) => {
+            setLatitude(lat);
+            setLongitude(lng);
+            setIsLocationChanged(true);
+            if (resolvedAddr) {
+              setLocationName(resolvedAddr);
+            }
+            setShowMapPicker(false);
+          }}
+          onClose={() => setShowMapPicker(false)}
         />
       )}
     </div>

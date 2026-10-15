@@ -79,6 +79,9 @@ export interface UpdateCatProfileInput {
   newPhotoFocalX?: number | null;
   newPhotoFocalY?: number | null;
   newPhotoZoom?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  locationName?: string | null;
 }
 
 export class CatService {
@@ -296,7 +299,7 @@ export class CatService {
     try {
       return await this.db.transaction(
         'rw',
-        [this.db.cats, this.db.photos],
+        [this.db.cats, this.db.photos, this.db.sightings],
         async () => {
           let newCoverPhotoId = existing.coverPhotoId;
 
@@ -313,6 +316,25 @@ export class CatService {
               zoom: input.newPhotoZoom,
             });
             newCoverPhotoId = photo.id;
+          }
+
+          // If location fields are explicitly provided, update or create latest sighting
+          if (input.latitude !== undefined || input.longitude !== undefined || input.locationName !== undefined) {
+            const sightings = await this.sightingRepo.getByCatId(catId);
+            if (sightings.length > 0) {
+              await this.sightingRepo.update(sightings[0].id, {
+                latitude: input.latitude,
+                longitude: input.longitude,
+                locationName: input.locationName,
+              });
+            } else if (input.latitude !== null && input.longitude !== null && input.latitude !== undefined && input.longitude !== undefined) {
+              await this.sightingRepo.create({
+                catId,
+                latitude: input.latitude,
+                longitude: input.longitude,
+                locationName: input.locationName,
+              });
+            }
           }
 
           return await this.catRepo.update(catId, {

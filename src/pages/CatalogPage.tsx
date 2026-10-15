@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Search, X, Footprints, Plus, MapPin, Calendar } from 'lucide-react';
+import { Search, X, MapPin, Calendar } from 'lucide-react';
 import { catRepository } from '../db';
 import { CatPhotoImg } from '../components/CatPhotoImg';
 import { formatBreedLabel } from '../config/catAppearance';
+import { OyenEmptyState } from '../components/OyenEmptyState';
 import type { CatWithLatestSighting } from '../types';
 
 export const CatalogPage: React.FC = () => {
@@ -83,15 +84,31 @@ export const CatalogPage: React.FC = () => {
       {/* Loading State */}
       {isLoading && (
         <div style={{ textAlign: 'center', padding: 'var(--space-8) 0', color: 'var(--color-text-muted)' }}>
-          <p>Memuat Katalog Kucing...</p>
+          <div
+            className="spin"
+            style={{
+              width: 28,
+              height: 28,
+              border: '3px solid var(--color-border)',
+              borderTopColor: 'var(--color-primary)',
+              borderRadius: '50%',
+              margin: '0 auto var(--space-3)',
+            }}
+            role="status"
+            aria-label="Memuat katalog"
+          />
         </div>
       )}
 
       {/* Error State */}
       {errorMsg && (
-        <div className="info-banner" style={{ backgroundColor: 'var(--color-danger-bg)', borderColor: 'var(--color-danger)' }}>
-          <span style={{ color: 'var(--color-danger)' }}>{errorMsg}</span>
-        </div>
+        <OyenEmptyState
+          variant="ngambek"
+          title="Yah, ada yang nggak beres."
+          description={errorMsg}
+          ctaLabel="Coba Lagi"
+          onCtaClick={() => loadCats(searchQuery)}
+        />
       )}
 
       {/* Content Grid or Empty State */}
@@ -152,43 +169,28 @@ export const CatalogPage: React.FC = () => {
                 );
               })}
             </div>
-          ) : (
+          ) : searchQuery.trim().length > 0 ? (
             <div className="empty-state-card" style={{ margin: 'var(--space-6) auto' }}>
-              <div className="empty-state-icon-circle">
-                <Footprints size={28} />
-              </div>
-              {searchQuery.trim().length > 0 ? (
-                <>
-                  <h2 className="empty-state-title">Tidak Ada Kucing yang Cocok</h2>
-                  <p className="empty-state-desc">
-                    Tidak ditemukan kucing yang sesuai dengan pencarian &ldquo;{searchQuery}&rdquo;.
-                  </p>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => setSearchQuery('')}
-                  >
-                    Hapus Pencarian
-                  </button>
-                </>
-              ) : (
-                <>
-                  <h2 className="empty-state-title">Katalog Kucing Masih Kosong</h2>
-                  <p className="empty-state-desc">
-                    Setiap kucing yang Anda jumpai dan catat akan tersimpan rapi di sini lengkap dengan info dan riwayat pertemuannya.
-                  </p>
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={() => navigate('/cats/new')}
-                    id="catalog-add-cat-btn"
-                  >
-                    <Plus size={18} />
-                    <span>Tambah Kucing Pertama</span>
-                  </button>
-                </>
-              )}
+              <h2 className="empty-state-title">Tidak Ada Kucing yang Cocok</h2>
+              <p className="empty-state-desc">
+                Tidak ditemukan kucing yang sesuai dengan &ldquo;{searchQuery}&rdquo;.
+              </p>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setSearchQuery('')}
+              >
+                Hapus Pencarian
+              </button>
             </div>
+          ) : (
+            <OyenEmptyState
+              variant="bos"
+              title="Belum ada kucing, Bos!"
+              description="Yuk, catat kucing pertama yang kamu temui."
+              ctaLabel="Tambah Kucing"
+              onCtaClick={() => navigate('/cats/new')}
+            />
           )}
         </>
       )}

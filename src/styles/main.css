@@ -866,6 +866,18 @@ input, select, textarea {
   gap: var(--space-4);
 }
 
+.photo-crop-dialog {
+  max-width: 440px;
+  width: 100%;
+  max-height: calc(100vh - 16px);
+  max-height: calc(100dvh - 16px);
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px !important;
+  gap: 8px !important;
+  overflow: hidden;
+}
+
 /* Settings Sections */
 .settings-group {
   background-color: var(--color-surface);
@@ -990,8 +1002,20 @@ input, select, textarea {
   flex: 1;
 }
 
-.app-content:has(.map-page-container) {
+.app-content:has(.map-page-container),
+.app-content:has(.camera-capture-screen) {
   padding-bottom: 0;
+}
+
+.app-content:has(.camera-capture-screen) {
+  height: calc(100vh - var(--header-height));
+  height: calc(100dvh - var(--header-height));
+  max-height: calc(100vh - var(--header-height));
+  max-height: calc(100dvh - var(--header-height));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
 }
 
 .map-container-full {
@@ -1264,18 +1288,20 @@ input, select, textarea {
 .map-card-thumb {
   width: 58px;
   height: 58px;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
+  position: relative;
   flex-shrink: 0;
-  background: var(--color-surface-subtle);
-  border: 1px solid var(--color-border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.map-card-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+.map-card-traits {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .map-card-info {
@@ -1727,14 +1753,15 @@ input, select, textarea {
 .camera-capture-screen {
   position: relative;
   width: 100%;
-  height: 100vh;
-  min-height: 100%;
+  height: 100%;
+  max-height: 100%;
   background-color: #0D0C0A;
   color: #FFFFFF;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   user-select: none;
+  flex: 1;
 }
 
 /* Visual Shutter Flash */
@@ -1757,16 +1784,17 @@ input, select, textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 8px 16px;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 100%);
   z-index: 20;
+  flex-shrink: 0;
 }
 
 .camera-top-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 6px 12px;
   background: rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1792,18 +1820,20 @@ input, select, textarea {
 /* Guidance Banner */
 .camera-guidance-banner {
   text-align: center;
-  padding: 6px 16px;
-  font-size: 12px;
+  padding: 4px 16px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.85);
   background: rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(4px);
   z-index: 15;
+  flex-shrink: 0;
 }
 
 /* Camera Live Viewport */
 .camera-viewport-container {
   position: relative;
   flex: 1;
+  min-height: 0;
   width: 100%;
   display: flex;
   align-items: center;
@@ -1813,6 +1843,8 @@ input, select, textarea {
 }
 
 .camera-live-video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1833,8 +1865,11 @@ input, select, textarea {
 /* Outer Square Guide (Profile 1:1) */
 .camera-square-guide {
   position: relative;
-  width: min(82vw, 360px);
-  height: min(82vw, 360px);
+  width: min(72vw, 36vh, 36dvh, 260px);
+  height: min(72vw, 36vh, 36dvh, 260px);
+  aspect-ratio: 1 / 1;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 24px);
   border: 2px solid rgba(255, 255, 255, 0.9);
   border-radius: var(--radius-md);
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.48);
@@ -1874,12 +1909,13 @@ input, select, textarea {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 4px 16px;
   background: rgba(18, 16, 14, 0.85);
   backdrop-filter: blur(6px);
   font-size: 11px;
   color: rgba(255, 255, 255, 0.75);
   z-index: 20;
+  flex-shrink: 0;
 }
 
 .camera-legend-bar .legend-divider {
@@ -1891,9 +1927,10 @@ input, select, textarea {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 18px 24px calc(18px + env(safe-area-inset-bottom, 0px));
+  padding: 8px 24px calc(var(--bottom-nav-height) + 16px + env(safe-area-inset-bottom, 0px));
   background: #12100E;
   z-index: 20;
+  flex-shrink: 0;
 }
 
 .camera-side-action {
@@ -1921,19 +1958,18 @@ input, select, textarea {
 
 /* Prominent Shutter Button */
 .camera-shutter-button {
-  width: 72px;
-  height: 72px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  border: 4px solid #FFFFFF;
+  border: 3.5px solid #FFFFFF;
   background: transparent;
-  padding: 4px;
+  padding: 3px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform var(--transition-fast);
 }
-
 .camera-shutter-button:active:not(:disabled) {
   transform: scale(0.92);
 }
@@ -1977,7 +2013,156 @@ input, select, textarea {
 }
 
 /* ==========================================================================
-   Approved Cat Photo Preview (Add Cat Form Top Section)
+   Dual-Panel Photo & Location Preview (Add Cat Form Top Section)
+   ========================================================================== */
+
+.add-cat-dual-preview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .add-cat-dual-preview {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+}
+
+.preview-panel-card {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+  gap: 12px;
+  min-width: 0;
+}
+
+.preview-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.preview-panel-title {
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.preview-panel-action {
+  font-size: var(--font-size-xs) !important;
+  padding: 5px 10px !important;
+  height: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+/* Left Panel: Photo Profile */
+.preview-photo-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  padding: 6px 0 8px;
+}
+
+.preview-avatar-wrap {
+  width: 100px;
+  height: 100px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-badge-subtitle {
+  font-size: 11.5px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* Right Panel: Location Mini-Map & Address */
+.preview-location-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.preview-mini-map-wrap {
+  width: 100%;
+  height: 120px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  background-color: var(--color-surface-subtle);
+  position: relative;
+}
+
+.preview-mini-map {
+  width: 100%;
+  height: 100%;
+}
+
+.preview-location-address-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-primary);
+  line-height: 1.35;
+  padding: 2px 0;
+  min-width: 0;
+}
+
+.preview-location-address-text {
+  font-weight: var(--font-weight-medium);
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.preview-location-empty-box {
+  width: 100%;
+  height: 120px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border);
+  background-color: var(--color-surface-subtle);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  text-align: center;
+}
+
+/* ==========================================================================
+   Approved Cat Photo Preview (Add Cat Form Top Section - Legacy)
    ========================================================================== */
 
 .approved-photo-card {
@@ -2292,6 +2477,546 @@ input, select, textarea {
     transform: translateY(0);
   }
 }
+
+/* ==========================================================================
+   Map Cluster, Spiderfy & Area Cat List (Batch 6.9)
+   ========================================================================== */
+
+/* Stacked Cat Photo Cluster Marker (Batch 6.12) */
+.cat-cluster-stack-container {
+  background: transparent;
+  border: none;
+}
+
+.cat-cluster-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  user-select: none;
+  transition: transform var(--transition-fast), filter var(--transition-fast);
+}
+
+.cat-cluster-stack:hover {
+  transform: scale(1.10);
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35));
+  z-index: 1200 !important;
+}
+
+.cat-cluster-stack:active {
+  transform: scale(0.96);
+}
+
+.cat-cluster-stack-slot {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cat-stacked-photo-item {
+  position: relative;
+  filter: drop-shadow(0 2.5px 5px rgba(0, 0, 0, 0.25));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cat-cluster-extra-badge {
+  position: absolute;
+  top: -4px;
+  right: -2px;
+  z-index: 10;
+  background: var(--color-primary);
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 999px;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.3px;
+  font-family: inherit;
+  pointer-events: none;
+}
+
+/* Legacy Cat Map Cluster Pin (fallback) */
+.cat-cluster-pin {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FAF8F5 0%, #EFE7DC 100%);
+  border: 2.5px solid var(--color-primary);
+  box-shadow: 0 4px 12px rgba(35, 119, 135, 0.35), 0 2px 5px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  user-select: none;
+}
+
+.cat-cluster-pin:hover {
+  transform: scale(1.12);
+  box-shadow: 0 6px 16px rgba(35, 119, 135, 0.45), 0 3px 6px rgba(0, 0, 0, 0.2);
+  z-index: 1000 !important;
+}
+
+.cat-cluster-pin:active {
+  transform: scale(0.96);
+}
+
+.cat-cluster-pin-count {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-primary);
+  line-height: 1;
+  font-family: inherit;
+}
+
+.cat-cluster-pin-label {
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+  line-height: 1;
+  margin-top: 2px;
+}
+
+
+/* Spiderfy Center Anchor Hub */
+.cat-spider-center-hub {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  border: 2px solid #FFFFFF;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+
+.cat-spider-center-hub:hover {
+  transform: scale(1.2);
+  background-color: #1a5e6b;
+}
+
+/* Area Cat List Bottom Sheet / Panel */
+.area-cat-list-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(254, 253, 251, 0.98);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--color-border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.14);
+  z-index: 1001;
+  max-height: min(65vh, 440px);
+  display: flex;
+  flex-direction: column;
+  animation: slideUpPanel 0.22s ease-out;
+}
+
+@media (min-width: 768px) {
+  .area-cat-list-panel {
+    bottom: 24px;
+    left: 24px;
+    right: auto;
+    width: 380px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.16);
+  }
+}
+
+@keyframes slideUpPanel {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.area-cat-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.area-cat-list-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.area-cat-list-body {
+  overflow-y: auto;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.area-cat-item-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  cursor: pointer;
+}
+
+.area-cat-item-card:hover {
+  background-color: var(--color-surface-subtle);
+  border-color: var(--color-primary);
+}
+
+.area-cat-thumb {
+  width: 48px;
+  height: 48px;
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.area-cat-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.area-cat-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.area-cat-breed-line {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.area-cat-address {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   Oyen Mascot Empty & Error States
+   ========================================================================== */
+.oyen-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  width: 100%;
+}
+
+.oyen-empty-state--overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  pointer-events: auto;
+  max-width: min(90vw, 360px);
+  padding: 0;
+}
+
+.oyen-empty-state-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6) var(--space-5);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 380px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.oyen-empty-state--overlay .oyen-empty-state-card {
+  background: rgba(254, 253, 251, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 219, 209, 0.9);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+}
+
+.oyen-mascot-img {
+  width: 130px;
+  height: 130px;
+  object-fit: contain;
+  margin-bottom: var(--space-3);
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.12));
+  animation: oyenFloat 3s ease-in-out infinite alternate;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+@keyframes oyenFloat {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-6px); }
+}
+
+.oyen-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-2) 0;
+  line-height: 1.3;
+}
+
+.oyen-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-5) 0;
+  line-height: 1.5;
+  max-width: 300px;
+}
+
+/* ==========================================================================
+   Settings Profile Avatar & Hero
+   ========================================================================== */
+.profile-hero-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-3);
+}
+
+.profile-avatar-wrapper {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+.profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-surface);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.profile-avatar-initials {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary) 0%, #175460 100%);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(35, 119, 135, 0.25);
+}
+
+.profile-avatar-edit-btn {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #FFFFFF;
+  border: 2px solid #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  transition: transform var(--transition-fast);
+}
+
+.profile-avatar-edit-btn:hover {
+  transform: scale(1.12);
+}
+
+.profile-hero-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-hero-name {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-hero-edit-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ==========================================================================
+   Map Personal Avatar Marker (GPS Location)
+   ========================================================================== */
+.user-avatar-marker {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-avatar-pulse-ring {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(35, 119, 135, 0.22);
+  animation: userAvatarPulse 2.2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes userAvatarPulse {
+  0% { transform: scale(0.7); opacity: 0.9; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.user-avatar-frame {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2.5px solid #FFFFFF;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  background: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 2;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+
+.user-avatar-frame:hover {
+  transform: scale(1.1);
+}
+
+.user-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.user-avatar-frame--initials {
+  background: linear-gradient(135deg, var(--color-primary) 0%, #175460 100%);
+}
+
+.user-avatar-initials {
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.user-avatar-dot-indicator {
+  position: absolute;
+  bottom: 0px;
+  right: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #22C55E;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  z-index: 3;
+}
+
+.user-map-popup {
+  padding: 4px 6px;
+  font-family: var(--font-family-base);
+  font-size: 12px;
+  color: var(--color-text-primary);
+  text-align: center;
+}
+.user-map-popup strong {
+  display: block;
+  font-size: 13px;
+  color: var(--color-primary);
+}
+.user-map-popup small {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
 
 
 

@@ -192,3 +192,155 @@ export async function extractExifGps(
     return null;
   }
 }
+
+/**
+ * Calculates geographic distance in meters between two lat/lng coordinates using the Haversine formula.
+ */
+export function calculateGeoDistanceMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  if (lat1 === lat2 && lon1 === lon2) return 0;
+  const R = 6371000; // Earth mean radius in meters
+  const toRad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * toRad;
+  const dLon = (lon2 - lon1) * toRad;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+export interface MarkerGroup<T = any> {
+  id: string;
+  anchor: [number, number];
+  centerLatLng: [number, number];
+  markers: T[];
+  isIdenticalCoords: boolean;
+}
+
+export const CLUSTER_RADIUS_LIMIT_METERS = 50.0;
+
+/**
+ * Groups markers strictly by geographic distance < 50 meters.
+ * Prevents chaining beyond 50m from cluster reference point.
+ */
+export function groupMarkersBy50mRadius<T extends { latitude: number; longitude: number; sightingId: string }>(
+  markers: T[]
+): MarkerGroup<T>[] {
+  if (markers.length === 0) return [];
+
+  const groups: MarkerGroup<T>[] = [];
+
+  for (const marker of markers) {
+    let bestGroup: MarkerGroup<T> | null = null;
+    let minDistance = CLUSTER_RADIUS_LIMIT_METERS;
+
+    for (const g of groups) {
+      const distToAnchor = calculateGeoDistanceMeters(
+        g.anchor[0],
+        g.anchor[1],
+        marker.latitude,
+        marker.longitude
+      );
+
+      // Strict rule: distance must be strictly LESS than 50 meters
+      if (distToAnchor < minDistance) {
+        // Prevent chaining: every existing member in the group must also be < 50m from candidate
+        const allWithin50m = g.markers.every(
+          (member) =>
+            calculateGeoDistanceMeters(
+              member.latitude,
+              member.longitude,
+              marker.latitude,
+              marker.longitude
+            ) < CLUSTER_RADIUS_LIMIT_METERS
+        );
+
+        if (allWithin50m) {
+          minDistance = distToAnchor;
+          bestGroup = g;
+        }
+      }
+    }
+
+    if (bestGroup) {
+      bestGroup.markers.push(marker);
+    } else {
+      groups.push({
+        id: `cluster-${marker.sightingId}`,
+        anchor: [marker.latitude, marker.longitude],
+        centerLatLng: [marker.latitude, marker.longitude],
+        markers: [marker],
+        isIdenticalCoords: true,
+      });
+    }
+  }
+
+  // Calculate centroids & identical check
+  for (const g of groups) {
+    const first = g.markers[0];
+    const isIdentical = g.markers.every(
+      (m) =>
+        Math.abs(m.latitude - first.latitude) < 0.000001 &&
+        Math.abs(m.longitude - first.longitude) < 0.000001
+    );
+    g.isIdenticalCoords = isIdentical;
+    if (isIdentical) {
+      g.centerLatLng = [first.latitude, first.longitude];
+    } else {
+      const avgLat = g.markers.reduce((sum, m) => sum + m.latitude, 0) / g.markers.length;
+      const avgLng = g.markers.reduce((sum, m) => sum + m.longitude, 0) / g.markers.length;
+      g.centerLatLng = [avgLat, avgLng];
+    }
+  }
+
+  return groups;
+}
+
+export interface ClusterStackModel {
+  displayedCount: number;
+  extraCount: number;
+  hasExtra: boolean;
+  extraLabel: string | null;
+}
+
+/**
+ * Calculates displayed representative photos and +N extra count for stacked cluster markers.
+ * - 2 cats -> 2 photos, 0 extra
+ * - 3 cats -> 3 photos, 0 extra
+ * - >3 cats -> 3 photos, +(total - 3) extra (e.g. 5 cats -> 3 photos, +2)
+ */
+export function computeClusterStackModel(totalCount: number): ClusterStackModel {
+  if (totalCount <= 1) {
+    return {
+      displayedCount: 1,
+      extraCount: 0,
+      hasExtra: false,
+      extraLabel: null,
+    };
+  }
+
+  if (totalCount <= 3) {
+    return {
+      displayedCount: totalCount,
+      extraCount: 0,
+      hasExtra: false,
+      extraLabel: null,
+    };
+  }
+
+  const displayedCount = 3;
+  const extraCount = totalCount - displayedCount;
+  return {
+    displayedCount,
+    extraCount,
+    hasExtra: true,
+    extraLabel: `+${extraCount}`,
+  };
+}
+
+

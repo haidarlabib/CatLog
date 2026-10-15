@@ -99,13 +99,15 @@ export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
   };
 
   return (
-    <div className="modal-backdrop" id="photo-crop-modal" role="dialog" aria-modal="true">
-      <div className="modal-dialog" style={{ maxWidth: '440px', width: '100%', maxHeight: '92vh', overflowY: 'auto' }}>
+    <div className="modal-backdrop" id="photo-crop-modal" role="dialog" aria-modal="true" style={{ padding: '8px' }}>
+      <div className="modal-card photo-crop-dialog">
         {/* Header */}
-        <div className="modal-header">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Move size={18} color="var(--color-primary)" />
-            <h2 className="modal-title" style={{ fontSize: 'var(--font-size-md)' }}>Atur Tampilan Foto</h2>
+            <h2 className="modal-title" style={{ fontSize: 'var(--font-size-md)', margin: 0, fontWeight: 700 }}>
+              Atur Tampilan Foto
+            </h2>
           </div>
           <button
             type="button"
@@ -117,11 +119,20 @@ export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Modal Scrollable/Flexible Body */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            overflowY: 'auto',
+            minHeight: 0,
+            flex: 1,
+          }}
+        >
           {/* Main Interactive Touch/Drag Box */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: '300px', marginBottom: '4px' }}>
               <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600 }}>
                 Sesuaikan Posisi
               </span>
@@ -129,7 +140,7 @@ export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
                 type="button"
                 className="btn-secondary"
                 onClick={handleReset}
-                style={{ padding: '3px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                style={{ padding: '2px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
                 title="Kembalikan ke posisi awal"
               >
                 <RotateCcw size={12} />
@@ -146,7 +157,7 @@ export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
               onPointerCancel={handlePointerUp}
               style={{
                 position: 'relative',
-                width: '100%',
+                width: 'min(100%, min(32vh, 32dvh, 230px))',
                 aspectRatio: '1 / 1',
                 borderRadius: 'var(--radius-md)',
                 overflow: 'hidden',
@@ -165,6 +176,43 @@ export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
                 style={{ width: '100%', height: '100%' }}
               />
 
+              {/* 3x3 Subtle Composition Grid */}
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  gridTemplateRows: '1fr 1fr 1fr',
+                  pointerEvents: 'none',
+                }}
+              >
+                <div style={{ border: '0.5px solid rgba(255, 255, 255, 0.2)' }} />
+                <div style={{ border: '0.5px solid rgba(255, 255, 255, 0.2)' }} />
+                <div style={{ border: '0.5px solid rgba(255, 255, 255, 0.2)' }} />
+                <div style={{ border: '0.5px solid rgba(255, 255, 255, 0.2)' }} />
+                <div style={{ border: '0.5px solid rgba(255, 255, 255, 0.2)' }} />
+                <div style={{ border: '0.5px solid rgba(255, 255, 255, 0.2)' }} />
+                <div style={{ border: '0.5px solid rgba(255, 255, 255, 0.2)' }} />
+                <div style={{ border: '0.5px solid rgba(255, 255, 255, 0.2)' }} />
+                <div style={{ border: '0.5px solid rgba(255, 255, 255, 0.2)' }} />
+              </div>
+
+              {/* Inner Circular Guide (matching viewfinder & map pin circle) */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '9%',
+                  left: '9%',
+                  width: '82%',
+                  height: '82%',
+                  borderRadius: '50%',
+                  border: '2px dashed #D96B43',
+                  filter: 'drop-shadow(0 0 3px rgba(0, 0, 0, 0.85))',
+                  pointerEvents: 'none',
+                }}
+              />
+
               {/* Subtle focal crosshair badge */}
               <div
                 style={{
@@ -178,11 +226,10 @@ export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
               >
                 <div
                   style={{
-                    width: '32px',
-                    height: '32px',
-                    border: '1.5px dashed rgba(255, 255, 255, 0.75)',
+                    width: '24px',
+                    height: '24px',
+                    border: '1.5px dashed rgba(255, 255, 255, 0.8)',
                     borderRadius: '50%',
-                    boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.35)',
                   }}
                 />
               </div>
@@ -190,14 +237,14 @@ export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
               <div
                 style={{
                   position: 'absolute',
-                  bottom: '8px',
+                  bottom: '6px',
                   left: '50%',
                   transform: 'translateX(-50%)',
-                  background: 'rgba(26, 23, 20, 0.72)',
+                  background: 'rgba(26, 23, 20, 0.75)',
                   backdropFilter: 'blur(4px)',
                   color: '#ffffff',
-                  fontSize: '11px',
-                  padding: '3px 10px',
+                  fontSize: '10px',
+                  padding: '2px 8px',
                   borderRadius: 'var(--radius-pill)',
                   pointerEvents: 'none',
                   whiteSpace: 'nowrap',
@@ -209,7 +256,7 @@ export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
           </div>
 
           {/* Zoom Control Slider */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%', maxWidth: '300px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--font-size-xs)' }}>
               <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <ZoomIn size={13} />
@@ -235,26 +282,22 @@ export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
           </div>
 
           {/* Two Synchronized Preview Panels */}
-          <div>
-            <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+          <div style={{ width: '100%', maxWidth: '300px', margin: '0 auto' }}>
+            <span style={{ fontSize: '11px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
               Hasil Tampilan
             </span>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               {/* 1. Pratinjau Profil */}
               <div style={{
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '10px',
+                gap: '8px',
+                padding: '6px 8px',
                 background: 'var(--color-surface)',
                 border: '1px solid var(--color-border)',
                 borderRadius: 'var(--radius-md)',
               }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                  Pratinjau Profil
-                </span>
-                <div style={{ width: '84px', height: '84px', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                <div style={{ width: '44px', height: '44px', flexShrink: 0, borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
                   <CatPhotoImg
                     src={imageUrl}
                     alt="Pratinjau Profil"
@@ -262,25 +305,26 @@ export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
                     crop={crop}
                   />
                 </div>
-                <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>Rasio 1:1</span>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-secondary)', lineHeight: 1.2 }}>
+                    Profil
+                  </span>
+                  <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>Rasio 1:1</span>
+                </div>
               </div>
 
               {/* 2. Pratinjau Peta */}
               <div style={{
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '10px',
+                gap: '8px',
+                padding: '6px 8px',
                 background: 'var(--color-surface)',
                 border: '1px solid var(--color-border)',
                 borderRadius: 'var(--radius-md)',
               }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                  Pratinjau Peta
-                </span>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ width: '56px', height: '56px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                  <div style={{ width: '36px', height: '36px' }}>
                     <CatPhotoImg
                       src={imageUrl}
                       alt="Pratinjau Peta"
@@ -294,26 +338,31 @@ export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
                     style={{
                       width: 0,
                       height: 0,
-                      borderLeft: '5px solid transparent',
-                      borderRight: '5px solid transparent',
-                      borderTop: `6px solid ${resolvedBadge.hex}`,
+                      borderLeft: '4px solid transparent',
+                      borderRight: '4px solid transparent',
+                      borderTop: `5px solid ${resolvedBadge.hex}`,
                       marginTop: '-2px',
                     }}
                   />
                 </div>
-                <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>Marker Lingkaran</span>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-secondary)', lineHeight: 1.2 }}>
+                    Peta
+                  </span>
+                  <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>Lingkaran</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="modal-footer" style={{ marginTop: '14px' }}>
+        {/* Footer Actions (Always visible, docked at bottom) */}
+        <div style={{ display: 'flex', gap: '8px', flexShrink: 0, paddingTop: '6px', borderTop: '1px solid var(--color-border)' }}>
           <button
             type="button"
             className="btn-secondary"
             onClick={onClose}
-            style={{ flex: 1 }}
+            style={{ flex: 1, padding: '8px', fontSize: 'var(--font-size-xs)' }}
           >
             {cancelButtonText}
           </button>
@@ -321,7 +370,7 @@ export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
             type="button"
             className="btn-primary"
             onClick={handleSave}
-            style={{ flex: 1 }}
+            style={{ flex: 1, padding: '8px', fontSize: 'var(--font-size-xs)' }}
             id="btn-save-crop"
           >
             <Check size={16} />

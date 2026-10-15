@@ -150,5 +150,39 @@ describe('MapService & Interactive Map Logic (Milestone 4)', () => {
     expect(markers[0].catName).toBe('RingCat');
     expect(markers[0].badgeRing).toBe('Hijau');
   });
+
+  it('preserves all cats with identical coordinates without data loss', async () => {
+    // Simulate 6 cats recorded at Waduk Setia Budi with identical coordinates
+    const sharedLat = -6.2074;
+    const sharedLng = 106.8287;
+    const catNames = ['Luna', 'Milo', 'Oreo', 'Leo', 'Bella', 'Simba'];
+    const badges = ['Rascal', 'Oopsie', 'Putih', 'Teal', 'Lavender', 'Terracotta'];
+
+    for (let i = 0; i < catNames.length; i++) {
+      await catService.createCatWithFirstSighting({
+        name: catNames[i],
+        badgeRing: badges[i],
+        latitude: sharedLat,
+        longitude: sharedLng,
+        locationName: 'Waduk Setia Budi Barat',
+      });
+    }
+
+    const markers = await mapService.getMapMarkers();
+    expect(markers.length).toBe(6);
+
+    // Ensure all 6 distinct cats are present with exact original coordinates
+    markers.forEach((m) => {
+      expect(m.latitude).toBe(sharedLat);
+      expect(m.longitude).toBe(sharedLng);
+      expect(m.locationName).toBe('Waduk Setia Budi Barat');
+    });
+
+    const retrievedNames = markers.map((m) => m.catName);
+    expect(retrievedNames).toEqual(expect.arrayContaining(catNames));
+
+    const retrievedBadges = markers.map((m) => m.badgeRing);
+    expect(retrievedBadges).toEqual(expect.arrayContaining(badges));
+  });
 });
 

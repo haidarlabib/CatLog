@@ -8,7 +8,6 @@ import {
   MapPin, 
   Calendar, 
   Utensils, 
-  Sparkles, 
   CheckCircle2, 
   AlertTriangle,
   Camera
@@ -21,6 +20,7 @@ import {
 import { CatPhotoImg } from '../components/CatPhotoImg';
 import { formatBreedLabel, formatAppearanceLabel } from '../config/catAppearance';
 import { formatIndonesianDateTime } from '../utils/date';
+import { OyenEmptyState } from '../components/OyenEmptyState';
 import type { Cat, Sighting, FeedingLog } from '../types';
 
 export const CatDetailPage: React.FC = () => {
@@ -103,31 +103,34 @@ export const CatDetailPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="page-container" style={{ textAlign: 'center', padding: 'var(--space-12) 0' }}>
-        <p>Memuat profil kucing...</p>
+      <div className="page-container" style={{ textAlign: 'center', padding: 'var(--space-12) 0', color: 'var(--color-text-muted)' }}>
+        <div
+          className="spin"
+          style={{
+            width: 28,
+            height: 28,
+            border: '3px solid var(--color-border)',
+            borderTopColor: 'var(--color-primary)',
+            borderRadius: '50%',
+            margin: '0 auto var(--space-3)',
+          }}
+          role="status"
+          aria-label="Memuat profil kucing"
+        />
       </div>
     );
   }
 
   if (notFound || !cat) {
     return (
-      <div className="page-container" style={{ textAlign: 'center', padding: 'var(--space-8) var(--space-4)' }}>
-        <div className="empty-state-card" style={{ margin: '0 auto' }}>
-          <div className="empty-state-icon-circle">
-            <Sparkles size={28} />
-          </div>
-          <h2 className="empty-state-title">Kucing Tidak Ditemukan</h2>
-          <p className="empty-state-desc">
-            Profil kucing yang Anda cari tidak ada di penyimpanan lokal atau telah dihapus.
-          </p>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => navigate('/catalog')}
-          >
-            Kembali ke Katalog
-          </button>
-        </div>
+      <div className="page-container" style={{ padding: 'var(--space-8) var(--space-4)' }}>
+        <OyenEmptyState
+          variant="ngambek"
+          title="Kucing Tidak Ditemukan"
+          description="Profil kucing yang Anda cari tidak ada di penyimpanan lokal atau telah dihapus."
+          ctaLabel="Kembali ke Katalog"
+          onCtaClick={() => navigate('/catalog')}
+        />
       </div>
     );
   }

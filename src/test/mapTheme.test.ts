@@ -41,4 +41,10 @@ describe('Batch 6.6: CARTO Voyager Map Theme & Configuration', () => {
     expect(cartoPositronProvider.maxZoom).toBeGreaterThanOrEqual(19);
     expect(osmFallbackProvider.maxZoom).toBeGreaterThanOrEqual(19);
   });
+
+  it('configures maxNativeZoom to prevent 403 Forbidden tile dropouts at high zoom levels', () => {
+    expect(cartoVoyagerProvider.maxNativeZoom).toBe(18);
+    expect(cartoPositronProvider.maxNativeZoom).toBe(18);
+    expect(osmFallbackProvider.maxNativeZoom).toBe(19);
+  });
 });

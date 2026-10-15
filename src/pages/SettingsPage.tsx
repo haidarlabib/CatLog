@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  User, 
   MapPin, 
   HardDrive, 
   ShieldCheck, 
@@ -15,13 +14,18 @@ import {
   AlertTriangle,
   X,
   FileCheck2,
-  RefreshCw
+  RefreshCw,
+  Camera,
+  ImagePlus
 } from 'lucide-react';
 import { settingsRepository } from '../db';
 import { backupService, type BackupValidationResult } from '../services/backupService';
+import { useUserProfile } from '../utils/useUserProfile';
 
 export const SettingsPage: React.FC = () => {
-  const [profileName, setProfileName] = useState('Cat Explorer');
+  const { profile, updateNickname, updatePhoto, removePhoto } = useUserProfile();
+
+  const [editName, setEditName] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [feedbackType, setFeedbackType] = useState<'success' | 'danger'>('success');
@@ -46,6 +50,7 @@ export const SettingsPage: React.FC = () => {
   const [isStandalone, setIsStandalone] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const profilePhotoInputRef = useRef<HTMLInputElement>(null);
 
   const showFeedback = (msg: string, type: 'success' | 'danger' = 'success') => {
     setFeedbackMsg(msg);
@@ -77,7 +82,6 @@ export const SettingsPage: React.FC = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Check PWA display mode
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsStandalone(true);
     }
@@ -89,15 +93,6 @@ export const SettingsPage: React.FC = () => {
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-
-    // Load persisted profile name from settingsRepository
-    settingsRepository.get<string>('profileName', 'Cat Explorer')
-      .then((saved) => {
-        if (saved) setProfileName(saved);
-      })
-      .catch(() => {});
-
-    // Query storage estimate & persistence
     loadStorageInfo();
 
     return () => {
@@ -107,13 +102,63 @@ export const SettingsPage: React.FC = () => {
     };
   }, []);
 
+  const handleStartEditName = () => {
+    setEditName(profile.nickname);
+    setIsEditingName(true);
+  };
+
   const handleSaveProfileName = async () => {
     try {
-      await settingsRepository.set('profileName', profileName);
+      await updateNickname(editName);
       setIsEditingName(false);
       showFeedback('Nama profil berhasil diperbarui');
     } catch {
       showFeedback('Gagal menyimpan nama profil', 'danger');
+    }
+  };
+
+  const handleProfilePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    // Resize to max 200x200 for profile avatar
+    try {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.src = url;
+      await new Promise((resolve) => { img.onload = resolve; });
+      
+      const SIZE = 200;
+      const canvas = document.createElement('canvas');
+      canvas.width = SIZE;
+      canvas.height = SIZE;
+      const ctx = canvas.getContext('2d')!;
+      
+      // Center crop
+      const minDim = Math.min(img.width, img.height);
+      const sx = (img.width - minDim) / 2;
+      const sy = (img.height - minDim) / 2;
+      ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, SIZE, SIZE);
+      URL.revokeObjectURL(url);
+
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.85);
+      });
+
+      await updatePhoto(blob);
+      showFeedback('Foto profil berhasil diperbarui');
+    } catch {
+      showFeedback('Gagal memproses foto profil', 'danger');
+    }
+  };
+
+  const handleRemoveProfilePhoto = async () => {
+    try {
+      await removePhoto();
+      showFeedback('Foto profil dihapus');
+    } catch {
+      showFeedback('Gagal menghapus foto profil', 'danger');
     }
   };
 
@@ -176,7 +221,7 @@ export const SettingsPage: React.FC = () => {
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    e.target.value = ''; // Reset so the same file can be re-selected
+    e.target.value = '';
 
     setIsValidating(true);
     try {
@@ -229,6 +274,14 @@ export const SettingsPage: React.FC = () => {
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
   };
 
+  // Generate initials for avatar fallback
+  const initials = profile.nickname
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0] || '')
+    .join('')
+    .toUpperCase() || 'U';
+
   return (
     <div className="page-container" id="settings-page">
       <div className="page-header-row">
@@ -256,7 +309,7 @@ export const SettingsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Hidden file input for backup ZIP */}
+      {/* Hidden file inputs */}
       <input
         type="file"
         ref={fileInputRef}
@@ -265,52 +318,116 @@ export const SettingsPage: React.FC = () => {
         style={{ display: 'none' }}
         id="backup-file-input"
       />
+      <input
+        type="file"
+        ref={profilePhotoInputRef}
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handleProfilePhotoChange}
+        style={{ display: 'none' }}
+        id="profile-photo-input"
+      />
 
-      {/* Group 1: Profile */}
+      {/* Group 1: Profile with Avatar */}
       <section className="settings-group" aria-labelledby="heading-profile">
         <div className="settings-group-header" id="heading-profile">Profil</div>
-        <div className="settings-row">
-          <div className="settings-row-left">
-            <div className="settings-icon-box">
-              <User size={18} />
-            </div>
-            <div className="settings-text-col">
-              <span className="settings-label">Label Pengguna Lokal</span>
-              <span className="settings-desc">Nama pengguna yang tersimpan lokal di perangkat ini</span>
-            </div>
+        
+        {/* Profile Avatar + Name Hero */}
+        <div className="profile-hero-row">
+          <div className="profile-avatar-wrapper">
+            {profile.photoUrl ? (
+              <img
+                src={profile.photoUrl}
+                alt="Foto profil"
+                className="profile-avatar-img"
+              />
+            ) : (
+              <div className="profile-avatar-initials">{initials}</div>
+            )}
+            <button
+              type="button"
+              className="profile-avatar-edit-btn"
+              onClick={() => profilePhotoInputRef.current?.click()}
+              aria-label="Ubah foto profil"
+              id="btn-change-profile-photo"
+            >
+              <Camera size={12} />
+            </button>
           </div>
-          <div>
+          <div className="profile-hero-info">
             {isEditingName ? (
-              <div style={{ display: 'flex', gap: '6px' }}>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <input
                   type="text"
-                  value={profileName}
-                  onChange={(e) => setProfileName(e.target.value)}
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSaveProfileName(); }}
                   style={{
-                    padding: '4px 8px',
+                    padding: '6px 10px',
                     borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--color-border)',
-                    fontSize: 'var(--font-size-xs)'
+                    border: '1px solid var(--color-border-focus)',
+                    fontSize: 'var(--font-size-sm)',
+                    flex: 1,
+                    minWidth: 0,
                   }}
+                  maxLength={30}
                   autoFocus
+                  id="input-profile-name"
                 />
                 <button
                   type="button"
-                  className="btn-secondary"
-                  style={{ padding: '4px 8px', fontSize: 'var(--font-size-xs)' }}
+                  className="btn-primary"
+                  style={{ padding: '6px 12px', fontSize: 'var(--font-size-xs)', width: 'auto' }}
                   onClick={handleSaveProfileName}
                 >
                   Simpan
                 </button>
               </div>
             ) : (
+              <>
+                <span className="profile-hero-name">{profile.nickname}</span>
+                <button
+                  type="button"
+                  className="profile-hero-edit-link"
+                  onClick={handleStartEditName}
+                  id="btn-edit-profile-name"
+                >
+                  Ubah nama
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Photo actions row */}
+        <div className="settings-row" style={{ paddingTop: '0' }}>
+          <div className="settings-row-left">
+            <div className="settings-icon-box">
+              <ImagePlus size={18} />
+            </div>
+            <div className="settings-text-col">
+              <span className="settings-label">Foto Profil</span>
+              <span className="settings-desc">Tampil sebagai avatar di peta</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ fontSize: 'var(--font-size-xs)', padding: '5px 10px' }}
+              onClick={() => profilePhotoInputRef.current?.click()}
+              id="btn-upload-profile-photo"
+            >
+              {profile.photoUrl ? 'Ganti' : 'Unggah'}
+            </button>
+            {profile.photoUrl && (
               <button
                 type="button"
-                className="settings-value-pill"
-                onClick={() => setIsEditingName(true)}
-                title="Klik untuk mengubah"
+                className="btn-secondary"
+                style={{ fontSize: 'var(--font-size-xs)', padding: '5px 10px', color: 'var(--color-danger)' }}
+                onClick={handleRemoveProfilePhoto}
+                id="btn-remove-profile-photo"
               >
-                {profileName}
+                Hapus
               </button>
             )}
           </div>
@@ -361,10 +478,10 @@ export const SettingsPage: React.FC = () => {
               <Database size={18} />
             </div>
             <div className="settings-text-col">
-              <span className="settings-label">Penggunaan Penyimpanan (Perkiraan)</span>
+              <span className="settings-label">Penggunaan Penyimpanan</span>
               <span className="settings-desc">
                 {storageEstimate ? (
-                  `${formatBytes(storageEstimate.usage)} terpakai dari ~${formatBytes(storageEstimate.quota)} perkiraan kuota browser`
+                  `${formatBytes(storageEstimate.usage)} terpakai dari ~${formatBytes(storageEstimate.quota)} kuota`
                 ) : (
                   'Memeriksa kuota penyimpanan browser...'
                 )}
@@ -386,10 +503,10 @@ export const SettingsPage: React.FC = () => {
               <span className="settings-label">Penyimpanan Persisten</span>
               <span className="settings-desc">
                 {isPersisted === true
-                  ? 'Diizinkan. Browser melindungi database lokal dari pembersihan otomatis.'
+                  ? 'Diizinkan. Browser melindungi database dari pembersihan otomatis.'
                   : isPersisted === false
-                  ? 'Standar. Browser mungkin membersihkan data saat ruang penyimpanan menipis.'
-                  : 'Status penyimpanan persisten belum dikonfirmasi browser.'}
+                  ? 'Standar. Browser mungkin membersihkan data saat ruang menipis.'
+                  : 'Status penyimpanan belum dikonfirmasi browser.'}
               </span>
             </div>
           </div>
@@ -420,9 +537,9 @@ export const SettingsPage: React.FC = () => {
               <HardDrive size={18} />
             </div>
             <div className="settings-text-col">
-              <span className="settings-label">Ekspor Cadangan Lengkap (.ZIP)</span>
+              <span className="settings-label">Ekspor Cadangan (.ZIP)</span>
               <span className="settings-desc">
-                Unduh arsip data terstruktur beserta metadata (JSON) dan file foto.
+                Unduh arsip data terstruktur beserta metadata dan file foto.
               </span>
             </div>
           </div>
@@ -435,7 +552,7 @@ export const SettingsPage: React.FC = () => {
             id="btn-export-backup"
           >
             <Download size={14} />
-            <span>{isExporting ? 'Mengekspor...' : 'Ekspor Cadangan'}</span>
+            <span>{isExporting ? 'Mengekspor...' : 'Ekspor'}</span>
           </button>
         </div>
 
@@ -448,7 +565,7 @@ export const SettingsPage: React.FC = () => {
             <div className="settings-text-col">
               <span className="settings-label">Pulihkan dari Cadangan</span>
               <span className="settings-desc">
-                Impor dan pulihkan data dari arsip ZIP ProwlLog sebelumnya.
+                Impor dan pulihkan data dari arsip ZIP ProwlLog.
               </span>
             </div>
           </div>
@@ -461,7 +578,7 @@ export const SettingsPage: React.FC = () => {
             id="btn-restore-backup"
           >
             <Upload size={14} />
-            <span>{isValidating ? 'Memeriksa...' : 'Pulihkan Cadangan'}</span>
+            <span>{isValidating ? 'Memeriksa...' : 'Pulihkan'}</span>
           </button>
         </div>
 
@@ -476,7 +593,7 @@ export const SettingsPage: React.FC = () => {
                 Reset Data Lokal
               </span>
               <span className="settings-desc">
-                Hapus permanen semua data kucing, riwayat pertemuan, dan foto di browser ini.
+                Hapus permanen semua data kucing, riwayat, dan foto.
               </span>
             </div>
           </div>
@@ -499,7 +616,7 @@ export const SettingsPage: React.FC = () => {
 
       {/* Group 4: App & PWA Information */}
       <section className="settings-group" aria-labelledby="heading-app">
-        <div className="settings-group-header" id="heading-app">Informasi Aplikasi &amp; PWA</div>
+        <div className="settings-group-header" id="heading-app">Informasi Aplikasi</div>
         
         <div className="settings-row">
           <div className="settings-row-left">
@@ -509,7 +626,7 @@ export const SettingsPage: React.FC = () => {
             <div className="settings-text-col">
               <span className="settings-label">Status Jaringan</span>
               <span className="settings-desc">
-                {isOnline ? 'Terhubung ke internet. Peta dapat dimuat.' : 'Mode offline. Data lokal & foto tetap dapat diakses penuh.'}
+                {isOnline ? 'Terhubung ke internet.' : 'Mode offline. Data lokal tetap dapat diakses.'}
               </span>
             </div>
           </div>
@@ -527,10 +644,10 @@ export const SettingsPage: React.FC = () => {
               <span className="settings-label">Instalasi PWA</span>
               <span className="settings-desc">
                 {isStandalone
-                  ? 'Berjalan dalam jendela aplikasi PWA tersendiri.'
+                  ? 'Berjalan dalam jendela aplikasi PWA.'
                   : deferredPrompt
-                  ? 'Siap dipasang ke layar utama perangkat.'
-                  : 'Tambahkan ProwlLog ke Layar Utama melalui menu browser untuk pengalaman offline maksimal.'}
+                  ? 'Siap dipasang ke layar utama.'
+                  : 'Tambahkan ProwlLog ke Layar Utama melalui menu browser.'}
               </span>
             </div>
           </div>
@@ -560,7 +677,7 @@ export const SettingsPage: React.FC = () => {
             </div>
             <div className="settings-text-col">
               <span className="settings-label">Versi Aplikasi</span>
-              <span className="settings-desc">ProwlLog Progressive Web App (Milestone 5)</span>
+              <span className="settings-desc">ProwlLog PWA</span>
             </div>
           </div>
           <span className="settings-value-pill">v0.1.0</span>
@@ -574,7 +691,7 @@ export const SettingsPage: React.FC = () => {
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <FileCheck2 size={20} color="var(--color-primary)" />
-                <h2 className="modal-title">Konfirmasi Pemulihan Database</h2>
+                <h2 className="modal-title">Konfirmasi Pemulihan</h2>
               </div>
               <button
                 type="button"
@@ -588,10 +705,9 @@ export const SettingsPage: React.FC = () => {
 
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', margin: 0 }}>
-                Arsip cadangan ProwlLog yang valid berhasil diverifikasi. Periksa ringkasan di bawah dan pilih metode pemulihan.
+                Arsip cadangan ProwlLog yang valid berhasil diverifikasi.
               </p>
 
-              {/* Archive Summary Card */}
               <div style={{
                 background: 'var(--color-surface)',
                 border: '1px solid var(--color-border)',
@@ -611,17 +727,15 @@ export const SettingsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Conflict warning if any */}
               {validationResult.conflictCounts && validationResult.conflictCounts.existingCats > 0 && (
                 <div className="info-banner" style={{ borderColor: 'var(--color-coral)', color: 'var(--color-coral)' }}>
                   <AlertTriangle size={15} className="info-banner-icon" />
                   <span>
-                    {validationResult.conflictCounts.existingCats} catatan kucing dalam cadangan ini sudah ada di database lokal Anda.
+                    {validationResult.conflictCounts.existingCats} catatan sudah ada di database lokal.
                   </span>
                 </div>
               )}
 
-              {/* Strategy selector */}
               <div>
                 <label style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
                   Metode Pemulihan:
@@ -649,7 +763,7 @@ export const SettingsPage: React.FC = () => {
                     <div>
                       <strong>Ganti Semua (Disarankan)</strong>
                       <div style={{ color: 'var(--color-text-secondary)' }}>
-                        Menimpa seluruh data lokal saat ini dengan data dari file cadangan.
+                        Menimpa seluruh data lokal dengan data cadangan.
                       </div>
                     </div>
                   </label>
@@ -676,7 +790,7 @@ export const SettingsPage: React.FC = () => {
                     <div>
                       <strong>Gabungkan (Merge)</strong>
                       <div style={{ color: 'var(--color-text-secondary)' }}>
-                        Menambahkan kucing baru dan memperbarui data yang cocok tanpa menghapus data lainnya.
+                        Menambahkan data baru tanpa menghapus data lainnya.
                       </div>
                     </div>
                   </label>

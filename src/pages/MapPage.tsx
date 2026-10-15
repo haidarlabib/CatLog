@@ -5,7 +5,6 @@ import {
   Plus, 
   Navigation, 
   MapPin, 
-  Calendar, 
   X, 
   Footprints, 
   ArrowRight,
@@ -14,22 +13,175 @@ import {
 } from 'lucide-react';
 import { defaultMapConfig } from '../config/mapConfig';
 import { mapService, type MapMarkerData } from '../services/mapService';
-import { getCurrentDeviceLocation } from '../utils/geo';
-import { resolveBadge } from '../config/catAppearance';
+import { getCurrentDeviceLocation, groupMarkersBy50mRadius, computeClusterStackModel, type MarkerGroup } from '../utils/geo';
+import { resolveBadge, formatBreedLabel, formatCatTraitLine } from '../config/catAppearance';
+import { CatPhotoImg } from '../components/CatPhotoImg';
+import { useUserProfile, type UserProfile } from '../utils/useUserProfile';
+import { OyenEmptyState } from '../components/OyenEmptyState';
+
+// Persist last map center and zoom level across route transitions
+let cachedMapViewState: { center: [number, number]; zoom: number } | null = null;
+
+function createUserAvatarIcon(profile: UserProfile): L.DivIcon {
+  const nickname = profile.nickname || 'Cat Explorer';
+  const escapedName = nickname.replace(/"/g, '&quot;');
+  const initials = nickname
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0] || '')
+    .join('')
+    .toUpperCase() || 'U';
+
+  const avatarInner = profile.photoUrl
+    ? `<img src="${profile.photoUrl}" alt="${escapedName}" class="user-avatar-img" />`
+    : `<span class="user-avatar-initials">${initials}</span>`;
+
+  const frameClass = profile.photoUrl ? 'user-avatar-frame' : 'user-avatar-frame user-avatar-frame--initials';
+
+  const html = `
+    <div class="user-avatar-marker" title="${escapedName}">
+      <div class="user-avatar-pulse-ring"></div>
+      <div class="${frameClass}">
+        ${avatarInner}
+      </div>
+      <div class="user-avatar-dot-indicator"></div>
+    </div>
+  `;
+
+  return L.divIcon({
+    className: 'user-avatar-container',
+    html,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+    popupAnchor: [0, -22],
+  });
+}
+
+function renderCatPhotoCircle(marker: MapMarkerData, sizePx = 40): string {
+  const badge = resolveBadge(marker.badgeRing);
+  const focalX = marker.focalX ?? 0.5;
+  const focalY = marker.focalY ?? 0.5;
+  const zoom = marker.zoom ?? 1.0;
+  const objectPosition = `${(focalX * 100).toFixed(1)}% ${(focalY * 100).toFixed(1)}%`;
+  const transform = zoom > 1.001 ? `transform: scale(${zoom.toFixed(2)}); transform-origin: ${objectPosition};` : '';
+
+  const photoContent = marker.photoUrl
+    ? `<img src="${marker.photoUrl}" alt="${marker.catName}" style="object-position: ${objectPosition}; ${transform}" />`
+    : `<div class="fallback-icon" style="color: ${badge.hex}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4-3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4 3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm-9 4c-3 0-5 2-5 5 0 2 2 3 5 3s5-1 5-3c0-3-2-5-5-5z"/></svg></div>`;
+
+  const cal = badge.calibration;
+
+  return `
+    <div class="cat-stacked-photo-item" style="width: ${sizePx}px; height: ${sizePx}px;">
+      <div class="cat-photo-marker-frame-wrap" style="width: ${sizePx}px; height: ${sizePx}px;">
+        <div class="cat-photo-marker-inner-circle" style="width: ${cal.photoDiameter}%; height: ${cal.photoDiameter}%; top: ${cal.photoCenterY}%; left: ${cal.photoCenterX}%;">
+          ${photoContent}
+        </div>
+        <img class="cat-photo-marker-badge-img" src="${badge.assetPath}" alt="${badge.nickname}" style="transform: scale(${cal.frameScale});" />
+      </div>
+    </div>
+  `;
+}
+
+function createCatMarkerIcon(marker: MapMarkerData, isSelected = false): L.DivIcon {
+  const badge = resolveBadge(marker.badgeRing);
+  return L.divIcon({
+    className: 'cat-map-marker-container',
+    html: `
+      <div class="cat-photo-marker-pin${isSelected ? ' selected' : ''}" id="marker-${marker.sightingId}">
+        ${renderCatPhotoCircle(marker, 52)}
+        <div class="cat-photo-marker-arrow" style="border-top-color: ${badge.hex};"></div>
+      </div>
+    `,
+    iconSize: [52, 57],
+    iconAnchor: [26, 57],
+  });
+}
+
+export function createStackedClusterIcon(group: MarkerGroup): L.DivIcon {
+  const count = group.markers.length;
+  const stackModel = computeClusterStackModel(count);
+  const displayedMarkers = group.markers.slice(0, stackModel.displayedCount);
+
+  let stackHtml = '';
+  let iconWidth = 62;
+  let iconHeight = 48;
+  let anchorX = 31;
+  let anchorY = 24;
+
+  const itemSize = count === 2 ? 42 : 40;
+
+  if (count === 2) {
+    iconWidth = 62;
+    iconHeight = 48;
+    anchorX = 31;
+    anchorY = 24;
+
+    stackHtml = `
+      <div class="cat-cluster-stack cat-cluster-stack-2" id="cluster-${group.id}">
+        <div class="cat-cluster-stack-slot slot-0" style="left: 0px; top: 0px; z-index: 1;">
+          ${renderCatPhotoCircle(displayedMarkers[0], itemSize)}
+        </div>
+        <div class="cat-cluster-stack-slot slot-1" style="left: 20px; top: 6px; z-index: 2;">
+          ${renderCatPhotoCircle(displayedMarkers[1], itemSize)}
+        </div>
+      </div>
+    `;
+  } else {
+    // 3 or more cats
+    iconWidth = 68;
+    iconHeight = 56;
+    anchorX = 34;
+    anchorY = 28;
+
+    const extraBadgeHtml = stackModel.hasExtra
+      ? `<div class="cat-cluster-extra-badge" title="${count} kucing di area ini">${stackModel.extraLabel}</div>`
+      : '';
+
+    stackHtml = `
+      <div class="cat-cluster-stack cat-cluster-stack-multi" id="cluster-${group.id}">
+        <div class="cat-cluster-stack-slot slot-0" style="left: 0px; top: 0px; z-index: 1;">
+          ${renderCatPhotoCircle(displayedMarkers[0], itemSize)}
+        </div>
+        <div class="cat-cluster-stack-slot slot-1" style="left: 26px; top: 0px; z-index: 1;">
+          ${renderCatPhotoCircle(displayedMarkers[1], itemSize)}
+        </div>
+        <div class="cat-cluster-stack-slot slot-2" style="left: 13px; top: 15px; z-index: 2;">
+          ${renderCatPhotoCircle(displayedMarkers[2], itemSize)}
+        </div>
+        ${extraBadgeHtml}
+      </div>
+    `;
+  }
+
+  return L.divIcon({
+    className: 'cat-cluster-stack-container',
+    html: stackHtml,
+    iconSize: [iconWidth, iconHeight],
+    iconAnchor: [anchorX, anchorY],
+  });
+}
 
 export const MapPage: React.FC = () => {
   const navigate = useNavigate();
+  const { profile } = useUserProfile();
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
+  const hasInitialFitRef = useRef(false);
+  const markersInstancesRef = useRef<Map<string, L.Marker>>(new Map());
 
   // Keep track of created Blob URLs for cleanup
   const blobUrlsRef = useRef<Map<string, string>>(new Map());
 
   const [markersData, setMarkersData] = useState<MapMarkerData[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<MapMarkerData | null>(null);
+  const [spiderfiedGroupId, setSpiderfiedGroupId] = useState<string | null>(null);
+  const [areaCatListGroup, setAreaCatListGroup] = useState<MarkerGroup | null>(null);
+  const [mapVersion, setMapVersion] = useState(0);
+
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [tileError, setTileError] = useState(false);
@@ -73,9 +225,12 @@ export const MapPage: React.FC = () => {
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
+    const initialCenter = cachedMapViewState?.center ?? defaultMapConfig.defaultCenter;
+    const initialZoom = cachedMapViewState?.zoom ?? defaultMapConfig.defaultZoom;
+
     const map = L.map(mapContainerRef.current, {
-      center: defaultMapConfig.defaultCenter,
-      zoom: defaultMapConfig.defaultZoom,
+      center: initialCenter,
+      zoom: initialZoom,
       minZoom: defaultMapConfig.minZoom,
       maxZoom: defaultMapConfig.maxZoom,
       zoomControl: false,
@@ -85,6 +240,7 @@ export const MapPage: React.FC = () => {
     const tileLayer = L.tileLayer(defaultMapConfig.tileProvider.url, {
       attribution: defaultMapConfig.tileProvider.attribution,
       maxZoom: defaultMapConfig.tileProvider.maxZoom,
+      maxNativeZoom: defaultMapConfig.tileProvider.maxNativeZoom ?? 18,
       subdomains: defaultMapConfig.tileProvider.subdomains || ['a', 'b', 'c', 'd'],
     });
 
@@ -107,9 +263,16 @@ export const MapPage: React.FC = () => {
 
     mapInstanceRef.current = map;
 
-    // Map click outside marker closes preview card
+    // Map click outside marker closes preview card & spiderfy
     map.on('click', () => {
       setSelectedMarker(null);
+      setSpiderfiedGroupId(null);
+      setAreaCatListGroup(null);
+    });
+
+    // Track zoom and move to recalculate clusters dynamically
+    map.on('zoomend moveend', () => {
+      setMapVersion((v) => v + 1);
     });
 
     // Invalidate size on initial mount and when container dimensions change
@@ -127,10 +290,17 @@ export const MapPage: React.FC = () => {
     });
 
     return () => {
+      if (mapInstanceRef.current) {
+        cachedMapViewState = {
+          center: [mapInstanceRef.current.getCenter().lat, mapInstanceRef.current.getCenter().lng],
+          zoom: mapInstanceRef.current.getZoom(),
+        };
+      }
       resizeObserver.disconnect();
       map.remove();
       mapInstanceRef.current = null;
       markersLayerRef.current = null;
+      markersInstancesRef.current.clear();
       mapService.revokeMarkerPhotoUrls(blobUrlsRef.current);
     };
   }, []);
@@ -147,67 +317,172 @@ export const MapPage: React.FC = () => {
     };
   }, []);
 
-  // 3. Render Leaflet Markers whenever markersData changes
+  // 3. Render Leaflet Markers, Clusters & Spiderfy
   useEffect(() => {
     const map = mapInstanceRef.current;
     const layer = markersLayerRef.current;
     if (!map || !layer) return;
 
     layer.clearLayers();
+    markersInstancesRef.current.clear();
 
     if (markersData.length === 0) return;
 
+    // Strict geographic clustering (< 50 meters, non-chaining)
+    const groups = groupMarkersBy50mRadius(markersData);
+
+
     const latLngBounds: L.LatLngExpression[] = [];
 
-    markersData.forEach((marker) => {
-      const isSelected = selectedMarker?.sightingId === marker.sightingId;
-      latLngBounds.push([marker.latitude, marker.longitude]);
+    groups.forEach((group) => {
+      // 1) Single Marker
+      if (group.markers.length === 1) {
+        const marker = group.markers[0];
+        latLngBounds.push([marker.latitude, marker.longitude]);
 
-      const badge = resolveBadge(marker.badgeRing);
-      const focalX = marker.focalX ?? 0.5;
-      const focalY = marker.focalY ?? 0.5;
-      const zoom = marker.zoom ?? 1.0;
-      const objectPosition = `${(focalX * 100).toFixed(1)}% ${(focalY * 100).toFixed(1)}%`;
-      const transform = zoom > 1.001 ? `transform: scale(${zoom.toFixed(2)}); transform-origin: ${objectPosition};` : '';
+        const customIcon = createCatMarkerIcon(marker, selectedMarker?.sightingId === marker.sightingId);
+        const leafletMarker = L.marker([marker.latitude, marker.longitude], {
+          icon: customIcon,
+          title: marker.catName,
+          zIndexOffset: selectedMarker?.sightingId === marker.sightingId ? 2000 : 0,
+        });
 
-      const photoContent = marker.photoUrl
-        ? `<img src="${marker.photoUrl}" alt="${marker.catName}" style="object-position: ${objectPosition}; ${transform}" />`
-        : `<div class="fallback-icon" style="color: ${badge.hex}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4-3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4 3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm-9 4c-3 0-5 2-5 5 0 2 2 3 5 3s5-1 5-3c0-3-2-5-5-5z"/></svg></div>`;
+        leafletMarker.on('click', (e) => {
+          L.DomEvent.stopPropagation(e);
+          setSelectedMarker(marker);
+          setAreaCatListGroup(null);
+          setSpiderfiedGroupId(null);
 
-      const cal = badge.calibration;
-      const customIcon = L.divIcon({
-        className: 'cat-map-marker-container',
-        html: `
-          <div class="cat-photo-marker-pin ${isSelected ? 'selected' : ''}" id="marker-${marker.sightingId}">
-            <div class="cat-photo-marker-frame-wrap">
-              <div class="cat-photo-marker-inner-circle" style="width: ${cal.photoDiameter}%; height: ${cal.photoDiameter}%; top: ${cal.photoCenterY}%; left: ${cal.photoCenterX}%;">
-                ${photoContent}
-              </div>
-              <img class="cat-photo-marker-badge-img" src="${badge.assetPath}" alt="${badge.nickname}" style="transform: scale(${cal.frameScale});" />
+          const currentZoom = map.getZoom();
+          const targetZoom = Math.max(currentZoom, 17);
+          map.flyTo([marker.latitude, marker.longitude], targetZoom, {
+            animate: true,
+            duration: 0.5,
+          });
+        });
+
+        layer.addLayer(leafletMarker);
+        markersInstancesRef.current.set(marker.sightingId, leafletMarker);
+        return;
+      }
+
+      // 2) Multi-Marker Cluster
+      group.markers.forEach((m) => {
+        latLngBounds.push([m.latitude, m.longitude]);
+      });
+
+      // If this group is currently spiderfied
+      if (spiderfiedGroupId === group.id) {
+        const centerPt = map.latLngToLayerPoint(group.centerLatLng);
+        const N = group.markers.length;
+        const radius = N <= 2 ? 46 : N <= 4 ? 54 : N <= 8 ? 64 : 76;
+
+        // Central hub button to collapse spiderfy
+        const centerHubIcon = L.divIcon({
+          className: 'cat-spider-center-hub-container',
+          html: `
+            <div class="cat-spider-center-hub" title="Tutup sebaran kucing">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
             </div>
-            <div class="cat-photo-marker-arrow" style="border-top-color: ${badge.hex};"></div>
-          </div>
-        `,
-        iconSize: [52, 57],
-        iconAnchor: [26, 57],
+          `,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        });
+
+        const hubMarker = L.marker(group.centerLatLng, {
+          icon: centerHubIcon,
+          zIndexOffset: 2500,
+        });
+
+        hubMarker.on('click', (e) => {
+          L.DomEvent.stopPropagation(e);
+          setSpiderfiedGroupId(null);
+          setAreaCatListGroup(null);
+        });
+
+        layer.addLayer(hubMarker);
+
+        // Render each spiderfied cat pin & connector line
+        group.markers.forEach((m, idx) => {
+          const angle = (2 * Math.PI * idx) / N - Math.PI / 2;
+          const spiderPt = centerPt.add(L.point(Math.cos(angle) * radius, Math.sin(angle) * radius));
+          const spiderLatLng = map.layerPointToLatLng(spiderPt);
+
+          // Connecting line
+          const line = L.polyline([group.centerLatLng, spiderLatLng], {
+            color: '#237787',
+            weight: 2,
+            opacity: 0.6,
+            dashArray: '3, 4',
+          });
+          layer.addLayer(line);
+
+          // Pin
+          const customIcon = createCatMarkerIcon(m, selectedMarker?.sightingId === m.sightingId);
+          const leafletMarker = L.marker(spiderLatLng, {
+            icon: customIcon,
+            title: m.catName,
+            zIndexOffset: selectedMarker?.sightingId === m.sightingId ? 2000 : 1200,
+          });
+
+          leafletMarker.on('click', (e) => {
+            L.DomEvent.stopPropagation(e);
+            setSelectedMarker(m);
+            setAreaCatListGroup(null);
+          });
+
+          layer.addLayer(leafletMarker);
+          markersInstancesRef.current.set(m.sightingId, leafletMarker);
+        });
+
+        return;
+      }
+
+      // Normal Cluster Pin (stacked cat photo miniature markers)
+      const clusterIcon = createStackedClusterIcon(group);
+
+      const clusterMarker = L.marker(group.centerLatLng, {
+        icon: clusterIcon,
+        title: `${group.markers.length} Kucing di area ini`,
+        zIndexOffset: 800,
       });
 
-      const leafletMarker = L.marker([marker.latitude, marker.longitude], {
-        icon: customIcon,
-        title: marker.catName,
-      });
-
-      leafletMarker.on('click', (e) => {
+      clusterMarker.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
-        setSelectedMarker(marker);
-        map.panTo([marker.latitude, marker.longitude], { animate: true });
+        const currentZoom = map.getZoom();
+        const maxClusterZoom = 18;
+
+        // Jika lokasi anggotanya berbeda dan masih memungkinkan untuk diperbesar, zoom-in serta pusatkan peta pada area cluster
+        if (!group.isIdenticalCoords && currentZoom < maxClusterZoom) {
+          const bounds = L.latLngBounds(group.markers.map((m) => [m.latitude, m.longitude]));
+          const targetZoom = Math.min(map.getBoundsZoom(bounds, false, L.point(60, 60)), maxClusterZoom);
+
+          if (targetZoom > currentZoom) {
+            map.flyToBounds(bounds, {
+              padding: [60, 60],
+              maxZoom: maxClusterZoom,
+              duration: 0.5,
+            });
+            return;
+          }
+        }
+
+        // Jika koordinat sama atau peta sudah mencapai tingkat zoom maksimum yang sesuai, buka daftar
+        setSpiderfiedGroupId(group.id);
+        setAreaCatListGroup(group);
+        setSelectedMarker(null);
+        map.panTo(group.centerLatLng, { animate: true });
       });
 
-      layer.addLayer(leafletMarker);
+      layer.addLayer(clusterMarker);
     });
 
-    // Auto fit bounds to markers if available and container has valid dimensions
-    if (latLngBounds.length > 0) {
+    // Auto fit bounds to markers ONCE on initial data load (if no cached view state)
+    if (!cachedMapViewState && !hasInitialFitRef.current && latLngBounds.length > 0) {
+      hasInitialFitRef.current = true;
       const size = map.getSize();
       if (size.x > 80 && size.y > 80) {
         try {
@@ -216,16 +491,47 @@ export const MapPage: React.FC = () => {
             maxZoom: 15,
           });
         } catch {
-          // Graceful fallback if bounds calculation fails
+          // Graceful fallback
         }
       }
     }
-  }, [markersData, selectedMarker]);
+  }, [markersData, mapVersion, spiderfiedGroupId, selectedMarker?.sightingId]);
+
+  // 4. Update visual selection & z-index when selectedMarker changes
+  useEffect(() => {
+    // Reset selected class on DOM pins
+    document.querySelectorAll('.cat-photo-marker-pin.selected').forEach((el) => {
+      el.classList.remove('selected');
+    });
+
+    // Reset marker z-index offsets
+    markersInstancesRef.current.forEach((m) => {
+      m.setZIndexOffset(0);
+    });
+
+    if (selectedMarker) {
+      const pin = document.getElementById(`marker-${selectedMarker.sightingId}`);
+      if (pin) {
+        pin.classList.add('selected');
+      }
+      const leafletMarker = markersInstancesRef.current.get(selectedMarker.sightingId);
+      if (leafletMarker) {
+        leafletMarker.setZIndexOffset(2000);
+      }
+    }
+  }, [selectedMarker]);
 
   // Load data on component mount
   useEffect(() => {
     loadMarkers();
   }, [loadMarkers]);
+
+  // Sync personal avatar marker icon when profile changes
+  useEffect(() => {
+    if (userMarkerRef.current) {
+      userMarkerRef.current.setIcon(createUserAvatarIcon(profile));
+    }
+  }, [profile]);
 
   // Handle GPS Centering
   const handleCenterOnUser = async () => {
@@ -239,26 +545,24 @@ export const MapPage: React.FC = () => {
 
       map.setView([pos.latitude, pos.longitude], 16, { animate: true });
 
-      // Add or update pulsing user dot
+      // Add or update personal avatar marker
       if (!userMarkerRef.current) {
-        const userIcon = L.divIcon({
-          className: 'user-gps-pulse-container',
-          html: `
-            <div class="user-gps-pulse-marker">
-              <div class="user-gps-pulse-ring"></div>
-              <div class="user-gps-pulse-dot"></div>
-            </div>
-          `,
-          iconSize: [20, 20],
-          iconAnchor: [10, 10],
-        });
         userMarkerRef.current = L.marker([pos.latitude, pos.longitude], {
-          icon: userIcon,
+          icon: createUserAvatarIcon(profile),
           zIndexOffset: 1500,
         }).addTo(map);
       } else {
         userMarkerRef.current.setLatLng([pos.latitude, pos.longitude]);
+        userMarkerRef.current.setIcon(createUserAvatarIcon(profile));
       }
+
+      const popupHtml = `
+        <div class="user-map-popup">
+          <strong>${profile.nickname || 'Cat Explorer'}</strong>
+          <small>Lokasi Anda saat ini (±${pos.accuracy}m)</small>
+        </div>
+      `;
+      userMarkerRef.current.bindPopup(popupHtml);
 
       setGeoNotice(`Lokasi terpusat ke posisi Anda (±${pos.accuracy}m)`);
       setTimeout(() => setGeoNotice(null), 3500);
@@ -381,73 +685,138 @@ export const MapPage: React.FC = () => {
           </div>
         )}
 
-        {/* Empty State Overlay if no sightings with coordinates */}
+        {/* Empty State Overlay with Oyen Si Penasaran if no sightings with coordinates */}
         {!isLoading && markersData.length === 0 && (
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 'var(--space-4)',
-              pointerEvents: 'none',
-              zIndex: 500,
-            }}
-          >
-            <div
-              className="empty-state-card"
-              style={{ pointerEvents: 'auto', background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(8px)' }}
-              id="map-empty-state"
-            >
-              <div className="empty-state-icon-circle">
-                <Footprints size={28} />
-              </div>
-              <h2 className="empty-state-title">Belum Ada Lokasi Kucing di Peta</h2>
-              <p className="empty-state-desc">
-                Saat Anda mencatat kucing beserta titik lokasinya, penanda lingkaran akan muncul di sini.
-              </p>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => navigate('/cats/new')}
-                id="map-add-first-cat-btn"
-              >
-                <Plus size={18} />
-                <span>Tambah Kucing dengan Lokasi</span>
-              </button>
-            </div>
-          </div>
+          <OyenEmptyState
+            variant="penasaran"
+            title="Peta masih sepi nih!"
+            description="Yuk, jalan-jalan dan tandai kucing pertama yang kamu temui di sekitarmu."
+            ctaLabel="Tambah Kucing Pertama"
+            onCtaClick={() => navigate('/cats/new')}
+            overlay
+          />
         )}
       </div>
+
+      {/* Area Cat List Bottom Sheet / Panel */}
+      {areaCatListGroup && (
+        <div className="area-cat-list-panel" id="area-cat-list-panel">
+          <div className="area-cat-list-header">
+            <div className="area-cat-list-title">
+              <Footprints size={16} style={{ color: 'var(--color-primary)' }} />
+              <span>Kucing di sekitar sini ({areaCatListGroup.markers.length})</span>
+            </div>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ padding: '5px', borderRadius: '50%' }}
+              onClick={() => {
+                setAreaCatListGroup(null);
+                setSpiderfiedGroupId(null);
+              }}
+              aria-label="Tutup daftar kucing"
+              id="btn-close-area-cat-list"
+            >
+              <X size={15} />
+            </button>
+          </div>
+
+          <div className="area-cat-list-body" id="area-cat-list-items">
+            {areaCatListGroup.markers.map((m) => {
+              const breedLabel = m.catBreed && m.catBreed.trim() && m.catBreed.toLowerCase() !== 'unknown' && m.catBreed.toLowerCase() !== 'not sure yet' ? formatBreedLabel(m.catBreed) : null;
+              const displayBreed = breedLabel && breedLabel !== 'Belum tahu pasti' ? breedLabel : null;
+
+              return (
+                <div
+                  key={m.sightingId}
+                  className="area-cat-item-card"
+                  onClick={() => {
+                    setSelectedMarker(m);
+                    setAreaCatListGroup(null);
+                  }}
+                  id={`area-cat-item-${m.sightingId}`}
+                >
+                  <div className="area-cat-thumb">
+                    <CatPhotoImg
+                      src={m.photoUrl}
+                      alt={m.catName}
+                      mode="circle"
+                      badgeId={m.badgeRing}
+                      crop={{
+                        focalX: m.focalX ?? 0.5,
+                        focalY: m.focalY ?? 0.5,
+                        zoom: m.zoom ?? 1.0,
+                      }}
+                    />
+                  </div>
+
+                  <div className="area-cat-info">
+                    <div className="area-cat-name">{m.catName}</div>
+                    {displayBreed && (
+                      <div className="area-cat-breed-line">
+                        <span>{displayBreed}</span>
+                      </div>
+                    )}
+                    {m.locationName && (
+                      <div className="area-cat-address">
+                        <MapPin size={10} style={{ flexShrink: 0 }} />
+                        <span>{m.locationName}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    style={{ padding: '6px 12px', fontSize: '11.5px', width: 'auto', flexShrink: 0 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/cats/${m.catId}`);
+                    }}
+                    id={`btn-detail-area-cat-${m.catId}`}
+                  >
+                    <span>Detail</span>
+                    <ArrowRight size={12} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Selected Sighting Floating Preview Card */}
       {selectedMarker && (
         <div className="map-sighting-card-wrapper" id="map-preview-card-wrapper">
           <div className="map-sighting-card" id="map-sighting-card">
             <div className="map-card-thumb">
-              {selectedMarker.photoUrl ? (
-                <img src={selectedMarker.photoUrl} alt={selectedMarker.catName} />
-              ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
-                  <Footprints size={22} />
-                </div>
-              )}
+              <CatPhotoImg
+                src={selectedMarker.photoUrl}
+                alt={selectedMarker.catName}
+                mode="circle"
+                badgeId={selectedMarker.badgeRing}
+                crop={{
+                  focalX: selectedMarker.focalX ?? 0.5,
+                  focalY: selectedMarker.focalY ?? 0.5,
+                  zoom: selectedMarker.zoom ?? 1.0,
+                }}
+              />
             </div>
 
             <div className="map-card-info">
               <div className="map-card-name">{selectedMarker.catName}</div>
-              <div className="map-card-meta">
-                <Calendar size={11} />
-                <span>
-                  {new Date(selectedMarker.spottedAt).toLocaleDateString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
-              </div>
+              {(() => {
+                const traitLine = formatCatTraitLine(
+                  selectedMarker.catBreed,
+                  selectedMarker.coatColors,
+                  selectedMarker.patterns
+                );
+                return traitLine ? (
+                  <div className="map-card-meta map-card-traits">
+                    <span>{traitLine}</span>
+                  </div>
+                ) : null;
+              })()}
               {selectedMarker.locationName && (
                 <div className="map-card-meta">
                   <MapPin size={11} />
@@ -482,7 +851,7 @@ export const MapPage: React.FC = () => {
       )}
 
       {/* Floating Action Button (FAB) for Quick Capture per PRD FR-01 */}
-      {!selectedMarker && (
+      {!selectedMarker && !areaCatListGroup && (
         <div className="fab-container">
           <button
             type="button"

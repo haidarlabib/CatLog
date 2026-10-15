@@ -13,6 +13,7 @@ export interface MapTileProvider {
   url: string;
   attribution: string;
   maxZoom: number;
+  maxNativeZoom?: number;
   minZoom?: number;
   subdomains?: string[];
 }
@@ -54,6 +55,7 @@ export const cartoVoyagerProvider: MapTileProvider = {
   url: buildCartoUrl('voyager', CARTO_API_KEY),
   attribution: CARTO_ATTRIBUTION,
   maxZoom: 20,
+  maxNativeZoom: 18,
   minZoom: 1,
   subdomains: ['a', 'b', 'c', 'd'],
 };
@@ -65,6 +67,7 @@ export const cartoPositronProvider: MapTileProvider = {
   url: buildCartoUrl('light_all', CARTO_API_KEY),
   attribution: CARTO_ATTRIBUTION,
   maxZoom: 20,
+  maxNativeZoom: 18,
   minZoom: 1,
   subdomains: ['a', 'b', 'c', 'd'],
 };
@@ -76,6 +79,7 @@ export const osmFallbackProvider: MapTileProvider = {
   url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   attribution: OSM_ATTRIBUTION,
   maxZoom: 19,
+  maxNativeZoom: 19,
   minZoom: 1,
   subdomains: ['a', 'b', 'c'],
 };

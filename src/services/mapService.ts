@@ -12,6 +12,8 @@ export interface MapMarkerData {
   catId: string;
   catName: string;
   catBreed?: string;
+  coatColors?: string[];
+  patterns?: string[];
   badgeRing?: string;
   latitude: number;
   longitude: number;
@@ -82,7 +84,9 @@ export class MapService {
         sightingId: sighting.id,
         catId: cat.id,
         catName: cat.name,
-        catBreed: cat.breed && cat.breed !== 'unknown' ? cat.breed : undefined,
+        catBreed: cat.breed && cat.breed !== 'unknown' && cat.breed !== 'Not sure yet' ? cat.breed : undefined,
+        coatColors: cat.coatColors && cat.coatColors.length > 0 ? cat.coatColors : undefined,
+        patterns: cat.patterns && cat.patterns.length > 0 ? cat.patterns : undefined,
         badgeRing: cat.badgeRing,
         latitude: sighting.latitude,
         longitude: sighting.longitude,

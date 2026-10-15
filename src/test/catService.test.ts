@@ -206,6 +206,53 @@ describe('CatService & Cat Management (Milestone 3)', () => {
       expect(updated.patterns).toEqual(['Tabby', 'Polos']);
       expect(updated.notes).toBe('Sekarang lebih aktif dan suka bermain');
     });
+
+    it('updates latest sighting location when location fields are provided in updateCatProfile', async () => {
+      const { cat, sighting } = await service.createCatWithFirstSighting({
+        name: 'Mochi',
+        latitude: -6.2088,
+        longitude: 106.8456,
+        locationName: 'Taman Suropati',
+      });
+
+      expect(sighting.latitude).toBe(-6.2088);
+      expect(sighting.locationName).toBe('Taman Suropati');
+
+      // Update location via updateCatProfile (Batch 6.9 Edit Profile Flow)
+      await service.updateCatProfile(cat.id, {
+        name: 'Mochi The Explorer',
+        latitude: -6.2001,
+        longitude: 106.8502,
+        locationName: 'Menteng Central',
+      });
+
+      const sightings = await testDb.sightings.where('catId').equals(cat.id).toArray();
+      expect(sightings.length).toBe(1);
+      expect(sightings[0].latitude).toBe(-6.2001);
+      expect(sightings[0].longitude).toBe(106.8502);
+      expect(sightings[0].locationName).toBe('Menteng Central');
+    });
+
+    it('preserves existing sighting location when location fields are omitted in updateCatProfile', async () => {
+      const { cat } = await service.createCatWithFirstSighting({
+        name: 'Simba',
+        latitude: -6.1754,
+        longitude: 106.8272,
+        locationName: 'Monas Area',
+      });
+
+      // Update only cat name and badge
+      await service.updateCatProfile(cat.id, {
+        name: 'Simba King',
+        badgeRing: 'Gold',
+      });
+
+      const sightings = await testDb.sightings.where('catId').equals(cat.id).toArray();
+      expect(sightings.length).toBe(1);
+      expect(sightings[0].latitude).toBe(-6.1754);
+      expect(sightings[0].longitude).toBe(106.8272);
+      expect(sightings[0].locationName).toBe('Monas Area');
+    });
   });
 
   describe('4. Geolocation Error Handling Logic', () => {

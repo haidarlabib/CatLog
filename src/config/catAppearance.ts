@@ -35,8 +35,8 @@ export const CHARACTER_BADGES: CharacterBadge[] = [
     calibration: {
       frameScale: 1.00,
       photoDiameter: 58,
-      photoCenterX: 49.5,
-      photoCenterY: 49.8,
+      photoCenterX: 50.0,
+      photoCenterY: 50.0,
     },
   },
   {
@@ -104,9 +104,9 @@ export const CHARACTER_BADGES: CharacterBadge[] = [
     hex: '#DC2626',
     calibration: {
       frameScale: 1.00,
-      photoDiameter: 62,
-      photoCenterX: 49.5,
-      photoCenterY: 49.5,
+      photoDiameter: 58,
+      photoCenterX: 50.0,
+      photoCenterY: 50.0,
     },
   },
 ];
@@ -327,3 +327,48 @@ export function formatBreedLabel(breed?: string): string {
   if (match) return match.label;
   return breed;
 }
+
+/**
+ * Formats cat traits line for cat cards:
+ * "Ras · Warna, Warna · Pola"
+ * Omit parts that are undefined, empty, or default 'unknown' / 'not sure yet'.
+ */
+export function formatCatTraitLine(
+  breed?: string,
+  coatColors?: string[],
+  patterns?: string[]
+): string | null {
+  const parts: string[] = [];
+
+  // 1. Ras jika tersedia dan bukan default 'unknown'
+  if (breed && breed.trim() && breed.toLowerCase() !== 'unknown' && breed.toLowerCase() !== 'not sure yet') {
+    const breedLabel = formatBreedLabel(breed);
+    if (breedLabel && breedLabel !== 'Belum tahu pasti') {
+      parts.push(breedLabel);
+    }
+  }
+
+  // 2. Warna bulu (misal "Putih, Hitam")
+  if (coatColors && coatColors.length > 0) {
+    const formattedColors = coatColors
+      .map((c) => formatAppearanceLabel(c).trim())
+      .filter((c) => c.length > 0 && c.toLowerCase() !== 'unknown');
+    if (formattedColors.length > 0) {
+      parts.push(formattedColors.join(', '));
+    }
+  }
+
+  // 3. Pola bulu (misal "Polos")
+  if (patterns && patterns.length > 0) {
+    const formattedPatterns = patterns
+      .map((p) => formatAppearanceLabel(p).trim())
+      .filter((p) => p.length > 0 && p.toLowerCase() !== 'unknown');
+    if (formattedPatterns.length > 0) {
+      parts.push(formattedPatterns.join(', '));
+    }
+  }
+
+  if (parts.length === 0) return null;
+  return parts.join(' · ');
+}
+

@@ -89,7 +89,8 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
     L.tileLayer(defaultMapConfig.tileProvider.url, {
       attribution: defaultMapConfig.tileProvider.attribution,
       maxZoom: defaultMapConfig.tileProvider.maxZoom,
-      subdomains: defaultMapConfig.tileProvider.subdomains || ['a', 'b', 'c'],
+      maxNativeZoom: defaultMapConfig.tileProvider.maxNativeZoom ?? 18,
+      subdomains: defaultMapConfig.tileProvider.subdomains || ['a', 'b', 'c', 'd'],
     }).addTo(map);
 
     // Zoom control at top-right
