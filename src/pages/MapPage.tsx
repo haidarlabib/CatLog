@@ -28,6 +28,7 @@ import { OyenEmptyState } from '../components/OyenEmptyState';
 
 // Persist last map center and zoom level across route transitions
 let cachedMapViewState: { center: [number, number]; zoom: number } | null = null;
+let cachedUserLocation: GeoLocationResult | null = null;
 
 function createUserAvatarIcon(profile: UserProfile): L.DivIcon {
   const nickname = profile.nickname || 'Cat Explorer';
@@ -235,16 +236,27 @@ export const MapPage: React.FC = () => {
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    const initialCenter = cachedMapViewState?.center ?? defaultMapConfig.defaultCenter;
-    const initialZoom = cachedMapViewState?.zoom ?? defaultMapConfig.defaultZoom;
+    const initialCenter = (cachedUserLocation && isValidCoordinates(cachedUserLocation.latitude, cachedUserLocation.longitude))
+      ? [cachedUserLocation.latitude, cachedUserLocation.longitude]
+      : (cachedMapViewState?.center ?? defaultMapConfig.defaultCenter);
+    const initialZoom = cachedUserLocation ? 17 : (cachedMapViewState?.zoom ?? defaultMapConfig.defaultZoom);
 
     const map = L.map(mapContainerRef.current, {
-      center: initialCenter,
+      center: initialCenter as L.LatLngExpression,
       zoom: initialZoom,
       minZoom: defaultMapConfig.minZoom,
       maxZoom: defaultMapConfig.maxZoom,
       zoomControl: false,
     });
+
+    // If cached location already exists, place avatar marker immediately
+    if (cachedUserLocation && isValidCoordinates(cachedUserLocation.latitude, cachedUserLocation.longitude)) {
+      hasInitialFitRef.current = true;
+      userMarkerRef.current = L.marker([cachedUserLocation.latitude, cachedUserLocation.longitude], {
+        icon: createUserAvatarIcon(profile),
+        zIndexOffset: 1500,
+      }).addTo(map);
+    }
 
     // CARTO Voyager Tile Layer with attribution
     const tileLayer = L.tileLayer(defaultMapConfig.tileProvider.url, {
@@ -315,9 +327,10 @@ export const MapPage: React.FC = () => {
       mapInstanceRef.current = null;
       markersLayerRef.current = null;
       markersInstancesRef.current.clear();
+      userMarkerRef.current = null;
       mapService.revokeMarkerPhotoUrls(blobUrlsRef.current);
     };
-  }, []);
+  }, [profile]);
 
   // Listen for online / offline events
   useEffect(() => {
@@ -494,8 +507,8 @@ export const MapPage: React.FC = () => {
       layer.addLayer(clusterMarker);
     });
 
-    // Auto fit bounds to markers ONCE on initial data load (if no cached view state)
-    if (!cachedMapViewState && !hasInitialFitRef.current && latLngBounds.length > 0) {
+    // Auto fit bounds to markers ONCE on initial data load (only if no user location is active)
+    if (!cachedUserLocation && !lastKnownUserPosRef.current && !cachedMapViewState && !hasInitialFitRef.current && latLngBounds.length > 0) {
       hasInitialFitRef.current = true;
       const size = map.getSize();
       if (size.x > 80 && size.y > 80) {
@@ -535,22 +548,12 @@ export const MapPage: React.FC = () => {
     }
   }, [selectedMarker]);
 
-  // Load data on component mount
-  useEffect(() => {
-    loadMarkers();
-  }, [loadMarkers]);
-
-  // Sync personal avatar marker icon when profile changes
-  useEffect(() => {
-    if (userMarkerRef.current) {
-      userMarkerRef.current.setIcon(createUserAvatarIcon(profile));
-    }
-  }, [profile]);
-
-  // Handle GPS Centering
-  const handleCenterOnUser = async () => {
+  // Handle GPS Centering & Auto-location
+  const centerOnUserLocation = useCallback(async (isManualTrigger = false) => {
     setGeoLoading(true);
-    setGeoNotice(null);
+    if (isManualTrigger) {
+      setGeoNotice(null);
+    }
 
     const map = mapInstanceRef.current;
     if (!map) {
@@ -559,22 +562,33 @@ export const MapPage: React.FC = () => {
     }
 
     // Reuse existing valid location immediately if available (fast response without zoom-out)
+    const existing = lastKnownUserPosRef.current || cachedUserLocation;
     if (
-      lastKnownUserPosRef.current &&
-      isValidCoordinates(lastKnownUserPosRef.current.latitude, lastKnownUserPosRef.current.longitude)
+      existing &&
+      isValidCoordinates(existing.latitude, existing.longitude)
     ) {
-      const cached = lastKnownUserPosRef.current;
       hasInitialFitRef.current = true;
       const currentZoom = map.getZoom();
       const targetZoom = Math.max(currentZoom, 17);
-      map.flyTo([cached.latitude, cached.longitude], targetZoom, {
+      map.flyTo([existing.latitude, existing.longitude], targetZoom, {
         animate: true,
-        duration: 0.6,
+        duration: 0.5,
       });
       cachedMapViewState = {
-        center: [cached.latitude, cached.longitude],
+        center: [existing.latitude, existing.longitude],
         zoom: targetZoom,
       };
+
+      // Add or update avatar marker immediately
+      if (!userMarkerRef.current) {
+        userMarkerRef.current = L.marker([existing.latitude, existing.longitude], {
+          icon: createUserAvatarIcon(profile),
+          zIndexOffset: 1500,
+        }).addTo(map);
+      } else {
+        userMarkerRef.current.setLatLng([existing.latitude, existing.longitude]);
+        userMarkerRef.current.setIcon(createUserAvatarIcon(profile));
+      }
     }
 
     try {
@@ -583,6 +597,7 @@ export const MapPage: React.FC = () => {
         throw new Error('Koordinat lokasi tidak valid.');
       }
 
+      cachedUserLocation = pos;
       lastKnownUserPosRef.current = pos;
       hasInitialFitRef.current = true;
 
@@ -617,15 +632,25 @@ export const MapPage: React.FC = () => {
         </div>
       `;
       userMarkerRef.current.bindPopup(popupHtml);
-
-      // Note: No success toast per Requirement 3!
     } catch (err: unknown) {
-      const msg = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Lokasi tidak tersedia.';
-      setGeoNotice(msg);
-      setTimeout(() => setGeoNotice(null), 4000);
+      if (isManualTrigger) {
+        const msg = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Lokasi tidak tersedia.';
+        setGeoNotice(msg);
+        setTimeout(() => setGeoNotice(null), 4000);
+      }
     } finally {
       setGeoLoading(false);
     }
+  }, [profile]);
+
+  // Load data & auto-locate user on every map open
+  useEffect(() => {
+    loadMarkers();
+    centerOnUserLocation(false);
+  }, [loadMarkers, centerOnUserLocation]);
+
+  const handleCenterOnUser = () => {
+    centerOnUserLocation(true);
   };
 
   return (
