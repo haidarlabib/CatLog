@@ -41,7 +41,6 @@ export const CatPhotoImg: React.FC<CatPhotoImgProps> = ({
     }
 
     let active = true;
-    let url: string | null = null;
 
     if (!photoId) {
       setBlobUrl(null);
@@ -56,7 +55,7 @@ export const CatPhotoImg: React.FC<CatPhotoImgProps> = ({
       .then((photo) => {
         if (!active) return;
         if (photo?.blob) {
-          url = URL.createObjectURL(photo.blob);
+          const url = photoRepository.createBlobUrl(photo);
           setBlobUrl(url);
           if (photo.focalX !== undefined || photo.focalY !== undefined || photo.zoom !== undefined) {
             setLoadedCrop({
@@ -82,9 +81,6 @@ export const CatPhotoImg: React.FC<CatPhotoImgProps> = ({
 
     return () => {
       active = false;
-      if (url) {
-        URL.revokeObjectURL(url);
-      }
     };
   }, [photoId, src]);
 

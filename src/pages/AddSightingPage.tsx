@@ -96,13 +96,23 @@ export const AddSightingPage: React.FC = () => {
       });
   }, [catId]);
 
+  const previewUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    previewUrlRef.current = previewUrl;
+  }, [previewUrl]);
+
+  // Clean up transient previewUrl on unmount
   useEffect(() => {
     return () => {
-      if (previewUrl && previewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(previewUrl);
+      if (previewUrlRef.current && previewUrlRef.current.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(previewUrlRef.current);
+        } catch {
+          // Safe ignore
+        }
       }
     };
-  }, [previewUrl]);
+  }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

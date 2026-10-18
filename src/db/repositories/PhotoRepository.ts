@@ -129,6 +129,7 @@ export class PhotoRepository {
 
     try {
       await this.db.photos.delete(id);
+      this.revokeBlobUrl(id);
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
       throw new DatabaseError(`Failed to delete photo with ID "${id}".`, err);
@@ -156,20 +157,48 @@ export class PhotoRepository {
     return { ...photo, ...updatedFields };
   }
 
+  private blobUrlCache = new Map<string, string>();
+
   /**
-   * Utility helper to create transient object URL for image rendering
+   * Utility helper to create or retrieve transient object URL for image rendering
    */
   createBlobUrl(photo: CatPhoto): string {
     if (!photo.blob) return '';
-    return URL.createObjectURL(photo.blob);
+    const cached = this.blobUrlCache.get(photo.id);
+    if (cached) return cached;
+    if (typeof URL === 'undefined' || !URL.createObjectURL) return '';
+    const url = URL.createObjectURL(photo.blob);
+    this.blobUrlCache.set(photo.id, url);
+    return url;
   }
 
   /**
    * Revoke transient object URL to prevent memory leaks
    */
-  revokeBlobUrl(url: string): void {
-    if (url && url.startsWith('blob:')) {
-      URL.revokeObjectURL(url);
+  revokeBlobUrl(urlOrId: string): void {
+    if (!urlOrId) return;
+    if (urlOrId.startsWith('blob:')) {
+      for (const [id, url] of this.blobUrlCache.entries()) {
+        if (url === urlOrId) {
+          this.blobUrlCache.delete(id);
+          break;
+        }
+      }
+      try {
+        URL.revokeObjectURL(urlOrId);
+      } catch {
+        // Safe ignore
+      }
+    } else {
+      const url = this.blobUrlCache.get(urlOrId);
+      if (url) {
+        this.blobUrlCache.delete(urlOrId);
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          // Safe ignore
+        }
+      }
     }
   }
 }

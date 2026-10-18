@@ -5,15 +5,14 @@ import {
   CheckCircle2, 
   Download, 
   Upload, 
-  Database, 
   AlertTriangle, 
   X, 
   FileCheck2, 
   RefreshCw, 
   Camera, 
-  ImagePlus,
-  Edit2,
-  HardDrive
+  Edit2, 
+  HardDrive,
+  ChevronRight
 } from 'lucide-react';
 import { settingsRepository } from '../db';
 import { backupService, type BackupValidationResult } from '../services/backupService';
@@ -26,6 +25,7 @@ export const SettingsPage: React.FC = () => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [feedbackType, setFeedbackType] = useState<'success' | 'danger'>('success');
+  const [useDefaultGps, setUseDefaultGps] = useState<boolean>(true);
 
   // Storage Quota state
   const [storageEstimate, setStorageEstimate] = useState<{ usage: number; quota: number } | null>(null);
@@ -59,7 +59,16 @@ export const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     loadStorageInfo();
+    settingsRepository.get<boolean>('useDefaultGps', true).then((val) => {
+      setUseDefaultGps(val !== false);
+    });
   }, []);
+
+  const handleToggleGps = async (checked: boolean) => {
+    setUseDefaultGps(checked);
+    await settingsRepository.set('useDefaultGps', checked);
+    showFeedback(checked ? 'Lokasi GPS default diaktifkan' : 'Lokasi GPS default dinonaktifkan');
+  };
 
   const handleStartEditName = () => {
     setEditName(profile.nickname);
@@ -252,9 +261,9 @@ export const SettingsPage: React.FC = () => {
         id="profile-photo-input"
       />
 
-      {/* Group 1: Profil Penjelajah */}
+      {/* Group 1: Profil Pengguna */}
       <section className="settings-section" aria-labelledby="heading-profile">
-        <div className="settings-section-title" id="heading-profile">Profil Penjelajah</div>
+        <div className="settings-section-title" id="heading-profile">Profil Pengguna</div>
         
         <div className="settings-card profile-card">
           {/* Top Avatar + Nickname Hero */}
@@ -295,7 +304,7 @@ export const SettingsPage: React.FC = () => {
                     className="profile-name-input"
                     maxLength={30}
                     autoFocus
-                    placeholder="Nama Penjelajah"
+                    placeholder="Nama Pengguna"
                     id="input-profile-name"
                   />
                   <div className="profile-name-edit-actions">
@@ -326,48 +335,56 @@ export const SettingsPage: React.FC = () => {
                       className="profile-edit-name-btn"
                       onClick={handleStartEditName}
                       id="btn-edit-profile-name"
-                      aria-label="Ubah nama penjelajah"
+                      aria-label="Ubah nama pengguna"
                       title="Ubah nama"
                     >
-                      <Edit2 size={12} />
-                      <span>Ubah nama</span>
+                      <Edit2 size={13} />
                     </button>
                   </div>
-                  <span className="profile-subtext">Tampil sebagai avatar di peta</span>
+                  <span className="profile-subtext">Pencatat kucing di sekitar</span>
                 </>
               )}
             </div>
           </div>
 
           {/* Photo Management Action Strip */}
-          <div className="profile-card-bottom">
-            <div className="profile-photo-label-col">
-              <span className="settings-row-label">Foto Avatar</span>
-              <span className="settings-row-desc">Format JPG, PNG, atau WebP</span>
+          <div 
+            className="profile-card-bottom" 
+            style={{ cursor: 'pointer' }}
+            onClick={() => profilePhotoInputRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') profilePhotoInputRef.current?.click(); }}
+            id="row-avatar-photo"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className="settings-icon-box" style={{ width: 34, height: 34, borderRadius: '8px' }}>
+                <Camera size={16} />
+              </div>
+              <div className="settings-text-col">
+                <span className="settings-row-label">Foto Avatar</span>
+                <span className="settings-row-desc">
+                  {profile.photoUrl ? 'Foto kustom aktif' : 'Pilih foto profil dari perangkat'}
+                </span>
+              </div>
             </div>
-            <div className="profile-photo-buttons">
-              <button
-                type="button"
-                className="btn-secondary"
-                style={{ fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                onClick={() => profilePhotoInputRef.current?.click()}
-                id="btn-upload-profile-photo"
-              >
-                <ImagePlus size={14} />
-                <span>{profile.photoUrl ? 'Ganti Foto' : 'Unggah Foto'}</span>
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               {profile.photoUrl && (
                 <button
                   type="button"
                   className="btn-secondary"
-                  style={{ fontSize: '12px', padding: '6px 10px', color: 'var(--color-danger)' }}
-                  onClick={handleRemoveProfilePhoto}
+                  style={{ fontSize: '11px', padding: '4px 8px', color: 'var(--color-danger)' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveProfilePhoto();
+                  }}
                   id="btn-remove-profile-photo"
                   title="Hapus foto profil"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={12} />
                 </button>
               )}
+              <ChevronRight size={16} className="settings-chevron" />
             </div>
           </div>
         </div>
@@ -377,101 +394,109 @@ export const SettingsPage: React.FC = () => {
       <section className="settings-section" aria-labelledby="heading-map">
         <div className="settings-section-title" id="heading-map">Pengaturan Peta</div>
         <div className="settings-card">
-          <div className="settings-row">
+          <div className="settings-row" style={{ padding: '12px 14px' }}>
             <div className="settings-row-left">
               <div className="settings-icon-box">
                 <MapPin size={17} />
               </div>
               <div className="settings-text-col">
-                <span className="settings-row-label">Tampilan Peta Default</span>
-                <span className="settings-row-desc">Pusatkan peta otomatis ke lokasi GPS saat izin lokasi diberikan</span>
+                <span className="settings-row-label">Lokasi Default</span>
+                <span className="settings-row-desc">Gunakan lokasi saya saat membuka peta</span>
               </div>
             </div>
-            <span className="settings-badge-pill">GPS Otomatis</span>
+            <label className="toggle-switch" title="Aktifkan lokasi default">
+              <input
+                type="checkbox"
+                checked={useDefaultGps}
+                onChange={(e) => handleToggleGps(e.target.checked)}
+                id="toggle-default-gps"
+              />
+              <span className="toggle-slider" />
+            </label>
           </div>
         </div>
       </section>
 
-      {/* Group 3: Data & Cadangan */}
+      {/* Group 3: Data & Penyimpanan */}
       <section className="settings-section" aria-labelledby="heading-data">
-        <div className="settings-section-title" id="heading-data">Data &amp; Cadangan</div>
-        <div className="settings-card">
+        <div className="settings-section-title" id="heading-data">Data &amp; Penyimpanan</div>
+        <div className="settings-card" style={{ padding: '4px 0' }}>
           {/* Storage Quota Usage */}
-          <div className="settings-row">
-            <div className="settings-row-left">
-              <div className="settings-icon-box">
-                <Database size={17} />
-              </div>
-              <div className="settings-text-col">
-                <span className="settings-row-label">Penggunaan Penyimpanan</span>
-                <span className="settings-row-desc">
-                  {storageEstimate ? (
-                    `${formatBytes(storageEstimate.usage)} terpakai dari ~${formatBytes(storageEstimate.quota)} kuota browser`
-                  ) : (
-                    'Memeriksa kuota penyimpanan lokal...'
-                  )}
-                </span>
-              </div>
-            </div>
-            <span className="settings-badge-pill">
-              {storageEstimate ? formatBytes(storageEstimate.usage) : 'IndexedDB'}
-            </span>
-          </div>
-
-          {/* Export Backup */}
-          <div className="settings-row">
+          <div className="settings-row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)' }}>
             <div className="settings-row-left">
               <div className="settings-icon-box">
                 <HardDrive size={17} />
               </div>
               <div className="settings-text-col">
-                <span className="settings-row-label">Ekspor Cadangan (.ZIP)</span>
-                <span className="settings-row-desc">
-                  Unduh arsip data terstruktur beserta metadata dan file foto.
-                </span>
+                <span className="settings-row-label">Penggunaan Penyimpanan</span>
+                <span className="settings-row-desc">Kapasitas data lokal terpakai</span>
               </div>
             </div>
-            <button
-              type="button"
-              className="btn-primary"
-              style={{ fontSize: '12px', padding: '7px 14px', width: 'auto', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
-              onClick={handleExportBackup}
-              disabled={isExporting}
-              id="btn-export-backup"
-            >
-              <Download size={14} />
-              <span>{isExporting ? 'Mengekspor...' : 'Ekspor (.ZIP)'}</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--color-primary)' }}>
+                {storageEstimate ? formatBytes(storageEstimate.usage) : '0 B'}
+              </span>
+              <ChevronRight size={16} className="settings-chevron" />
+            </div>
+          </div>
+
+          {/* Export Backup */}
+          <div 
+            className="settings-action-row" 
+            onClick={handleExportBackup} 
+            role="button" 
+            tabIndex={0}
+            id="btn-export-backup"
+            style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)' }}
+          >
+            <div className="settings-row-left">
+              <div className="settings-icon-box">
+                <Download size={17} />
+              </div>
+              <div className="settings-text-col">
+                <span className="settings-row-label">Ekspor Cadangan Data</span>
+                <span className="settings-row-desc">Simpan semua data ke file ZIP</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              {isExporting && <span style={{ fontSize: '11px', color: 'var(--color-primary)', marginRight: '6px' }}>Mengekspor...</span>}
+              <ChevronRight size={16} className="settings-chevron" />
+            </div>
           </div>
 
           {/* Restore Backup */}
-          <div className="settings-row">
+          <div 
+            className="settings-action-row" 
+            onClick={handleTriggerFileSelect} 
+            role="button" 
+            tabIndex={0}
+            id="btn-restore-backup"
+            style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)' }}
+          >
             <div className="settings-row-left">
               <div className="settings-icon-box">
                 <Upload size={17} />
               </div>
               <div className="settings-text-col">
-                <span className="settings-row-label">Pulihkan Cadangan</span>
-                <span className="settings-row-desc">
-                  Impor dan pulihkan data dari file ZIP cadangan ProwlLog.
-                </span>
+                <span className="settings-row-label">Impor Cadangan Data</span>
+                <span className="settings-row-desc">Pulihkan data dari file ZIP</span>
               </div>
             </div>
-            <button
-              type="button"
-              className="btn-secondary"
-              style={{ fontSize: '12px', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
-              onClick={handleTriggerFileSelect}
-              disabled={isValidating}
-              id="btn-restore-backup"
-            >
-              <Upload size={14} />
-              <span>{isValidating ? 'Memeriksa...' : 'Pulihkan Data'}</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              {isValidating && <span style={{ fontSize: '11px', color: 'var(--color-primary)', marginRight: '6px' }}>Memeriksa...</span>}
+              <ChevronRight size={16} className="settings-chevron" />
+            </div>
           </div>
 
           {/* Reset Local Data (Danger Zone) */}
-          <div className="settings-row danger-row">
+          <div 
+            className="settings-action-row danger" 
+            onClick={handleClearData} 
+            role="button" 
+            tabIndex={0}
+            id="btn-clear-data"
+            style={{ padding: '12px 16px' }}
+          >
             <div className="settings-row-left">
               <div className="settings-icon-box danger">
                 <Trash2 size={17} />
@@ -481,25 +506,11 @@ export const SettingsPage: React.FC = () => {
                   Hapus Semua Data
                 </span>
                 <span className="settings-row-desc">
-                  Hapus permanen seluruh data kucing, riwayat pertemuan, dan foto di perangkat ini.
+                  Menghapus seluruh data secara permanen
                 </span>
               </div>
             </div>
-            <button
-              type="button"
-              className="btn-secondary"
-              style={{ 
-                color: 'var(--color-danger)', 
-                borderColor: 'rgba(217, 72, 65, 0.35)', 
-                fontSize: '12px',
-                padding: '7px 14px',
-                whiteSpace: 'nowrap'
-              }}
-              onClick={handleClearData}
-              id="btn-clear-data"
-            >
-              Hapus Data
-            </button>
+            <ChevronRight size={16} className="settings-chevron" style={{ color: 'var(--color-danger)' }} />
           </div>
         </div>
       </section>
@@ -525,7 +536,7 @@ export const SettingsPage: React.FC = () => {
 
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', margin: 0 }}>
-                File cadangan ZIP ProwlLog terverifikasi. Pilih metode pemulihan data:
+                File cadangan ZIP Cuking terverifikasi. Pilih metode pemulihan data:
               </p>
 
               <div style={{

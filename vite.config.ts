@@ -9,10 +9,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       injectRegister: 'auto',
-      includeAssets: ['favicon.svg', 'favicon.png', 'logo.png', 'icons/*.png', 'icons/*.svg'],
+      includeAssets: ['favicon.svg', 'favicon.png', 'logo.png', 'cuking logo.png', 'icons/*.png', 'icons/*.svg'],
       manifest: {
-        name: 'ProwlLog — Community Cat Tracker',
-        short_name: 'ProwlLog',
+        name: 'Cuking',
+        short_name: 'Cuking',
         description: 'Personal local-first cat tracker for cataloging feline encounters, photos, and map pins.',
         theme_color: '#226F80',
         background_color: '#FAFAF7',

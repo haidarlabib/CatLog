@@ -135,7 +135,7 @@ export const EditCatPage: React.FC = () => {
           try {
             const photo = await photoRepository.getById(c.coverPhotoId);
             if (photo?.blob) {
-              const url = URL.createObjectURL(photo.blob);
+              const url = photoRepository.createBlobUrl(photo);
               setCoverPhotoBlobUrl(url);
               if (photo.focalX !== undefined || photo.focalY !== undefined || photo.zoom !== undefined) {
                 setExistingPhotoCrop({
@@ -158,17 +158,23 @@ export const EditCatPage: React.FC = () => {
       });
   }, [catId]);
 
-  // Clean up Object URLs
+  const newPreviewUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    newPreviewUrlRef.current = newPreviewUrl;
+  }, [newPreviewUrl]);
+
+  // Clean up transient newPreviewUrl on unmount
   useEffect(() => {
     return () => {
-      if (newPreviewUrl && newPreviewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(newPreviewUrl);
-      }
-      if (coverPhotoBlobUrl && coverPhotoBlobUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(coverPhotoBlobUrl);
+      if (newPreviewUrlRef.current && newPreviewUrlRef.current.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(newPreviewUrlRef.current);
+        } catch {
+          // Safe ignore
+        }
       }
     };
-  }, [newPreviewUrl, coverPhotoBlobUrl]);
+  }, []);
 
   // Mini-map Leaflet Effect for Location Preview
   useEffect(() => {

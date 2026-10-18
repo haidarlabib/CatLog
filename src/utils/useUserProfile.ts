@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { settingsRepository } from '../db';
 
 /**
@@ -23,6 +23,10 @@ export function useUserProfile() {
     photoUrl: null,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const photoUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    photoUrlRef.current = profile.photoUrl;
+  }, [profile.photoUrl]);
 
   // Load profile from DB
   const loadProfile = useCallback(async () => {
@@ -62,11 +66,14 @@ export function useUserProfile() {
     loadProfile();
     return () => {
       // Cleanup blob URL on unmount
-      if (profile.photoUrl) {
-        URL.revokeObjectURL(profile.photoUrl);
+      if (photoUrlRef.current && photoUrlRef.current.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(photoUrlRef.current);
+        } catch {
+          // Safe ignore
+        }
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadProfile]);
 
   const updateNickname = useCallback(async (name: string) => {

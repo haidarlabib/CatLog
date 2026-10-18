@@ -105,26 +105,26 @@ export const AddCatCameraPage: React.FC = () => {
     }
   }, [stopCameraStream]);
 
+  const capturedPreviewUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    capturedPreviewUrlRef.current = capturedPreviewUrl;
+  }, [capturedPreviewUrl]);
+
   // Start stream on mount, stop on unmount
   useEffect(() => {
     startCameraStream();
 
     return () => {
       stopCameraStream();
-      if (capturedPreviewUrl && capturedPreviewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(capturedPreviewUrl);
+      if (capturedPreviewUrlRef.current && capturedPreviewUrlRef.current.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(capturedPreviewUrlRef.current);
+        } catch {
+          // Safe ignore
+        }
       }
     };
-  }, [startCameraStream]);
-
-  // Clean up captured URL when resetting
-  useEffect(() => {
-    return () => {
-      if (capturedPreviewUrl && capturedPreviewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(capturedPreviewUrl);
-      }
-    };
-  }, [capturedPreviewUrl]);
+  }, [startCameraStream, stopCameraStream]);
 
   // Capture photo from live video using guide-mapped canvas
   const handleShutterClick = async () => {

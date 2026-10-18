@@ -26,15 +26,12 @@ export const Header: React.FC<HeaderProps> = ({ catCount = 0 }) => {
       <div className="brand-wrapper">
         <img
           src="/logo.png"
-          alt="ProwlLog logo"
+          alt="Cuking logo"
           className="brand-logo-img"
           width="32"
           height="32"
         />
-        <div>
-          <span className="brand-title">ProwlLog</span>
-        </div>
-        <span className="brand-badge">PWA</span>
+        <span className="brand-title">Cuking</span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

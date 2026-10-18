@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Search, X, MapPin, Calendar } from 'lucide-react';
+import { Search, X, MapPin, MoreHorizontal } from 'lucide-react';
 import { catRepository } from '../db';
 import { CatPhotoImg } from '../components/CatPhotoImg';
-import { formatBreedLabel } from '../config/catAppearance';
+import { formatBreedLabel, formatAppearanceLabel } from '../config/catAppearance';
 import { OyenEmptyState } from '../components/OyenEmptyState';
 import type { CatWithLatestSighting } from '../types';
 
@@ -50,7 +50,7 @@ export const CatalogPage: React.FC = () => {
       <div className="page-header-row">
         <div>
           <h1 className="page-title">Katalog Kucing</h1>
-          <span className="page-subtitle">Indeks kucing lokal Anda</span>
+          <span className="page-subtitle">Koleksi kucing yang kamu temui</span>
         </div>
         <span className="brand-badge" id="catalog-count-badge">
           {cats.length} Kucing
@@ -118,11 +118,8 @@ export const CatalogPage: React.FC = () => {
             <div className="cat-grid" id="catalog-grid">
               {cats.map((cat) => {
                 const breedText = cat.breed && cat.breed !== 'unknown' ? formatBreedLabel(cat.breed) : null;
-                const formattedDate = cat.latestSighting
-                  ? new Date(cat.latestSighting.spottedAt).toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                    })
+                const coatText = cat.coatColors && cat.coatColors.length > 0 
+                  ? cat.coatColors.map(formatAppearanceLabel).join(' ') 
                   : null;
 
                 return (
@@ -136,33 +133,26 @@ export const CatalogPage: React.FC = () => {
                       <CatPhotoImg
                         photoId={cat.coverPhotoId}
                         alt={`Foto ${cat.name}`}
-                        className="cat-card-img"
+                        mode="circle"
+                        badgeId={cat.badgeRing || 'amber_monarch'}
                       />
                     </div>
                     <div className="cat-card-body">
-                      <div className="cat-card-title">{cat.name}</div>
-                      {breedText && (
-                        <div className="cat-card-meta">
-                          <span className="brand-badge" style={{ padding: '1px 6px', fontSize: '11px' }}>
-                            {breedText}
-                          </span>
-                        </div>
-                      )}
-                      <div className="cat-card-meta" style={{ marginTop: 'auto', paddingTop: '4px' }}>
-                        {formattedDate && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                            <Calendar size={11} />
-                            <span>{formattedDate}</span>
-                          </span>
-                        )}
-                        {cat.latestSighting?.locationName && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '3px', marginLeft: 'auto', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            <MapPin size={11} />
-                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '80px' }}>
-                              {cat.latestSighting.locationName}
-                            </span>
-                          </span>
-                        )}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
+                        <div className="cat-card-title">{cat.name}</div>
+                        <span className="cat-card-more-btn" aria-hidden="true">
+                          <MoreHorizontal size={14} />
+                        </span>
+                      </div>
+                      
+                      <div className="cat-card-subtitle">
+                        <div>{breedText || 'Domestik'}</div>
+                        {coatText && <div style={{ color: 'var(--color-text-subtle)', fontSize: '11px' }}>{coatText}</div>}
+                      </div>
+
+                      <div className="cat-card-meta" style={{ marginTop: 'auto', paddingTop: '6px', color: 'var(--color-primary)', fontWeight: 600 }}>
+                        <MapPin size={11} style={{ flexShrink: 0 }} />
+                        <span>{cat.sightingsCount || 1} pertemuan</span>
                       </div>
                     </div>
                   </Link>

@@ -432,7 +432,7 @@ export const AddCatPage: React.FC = () => {
             <div className="preview-panel-header">
               <span className="preview-panel-title">
                 <Camera size={13} style={{ color: 'var(--color-primary)' }} />
-                <span>Foto Profil</span>
+                <span>FOTO PROFIL</span>
               </span>
               <button
                 type="button"
@@ -459,11 +459,6 @@ export const AddCatPage: React.FC = () => {
                   />
                 </div>
               </div>
-              <span className="preview-badge-subtitle">
-                {badgeRing
-                  ? `${resolveBadge(badgeRing).nickname} — ${resolveBadge(badgeRing).epithet}`
-                  : 'Pilih Colour Badge di bawah'}
-              </span>
             </div>
           </div>
 
@@ -472,7 +467,7 @@ export const AddCatPage: React.FC = () => {
             <div className="preview-panel-header">
               <span className="preview-panel-title">
                 <MapPin size={13} style={{ color: 'var(--color-primary)' }} />
-                <span>Lokasi Kucing</span>
+                <span>LOKASI PERTAMA</span>
               </span>
               {latitude !== null && longitude !== null && (
                 <button

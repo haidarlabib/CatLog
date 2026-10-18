@@ -95,7 +95,6 @@ export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
 
   const handleSave = () => {
     onSave(clampCrop(crop));
-    onClose();
   };
 
   return (

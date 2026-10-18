@@ -37,19 +37,24 @@ export const AppShell: React.FC<AppShellProps> = ({ catCount: initialCount }) =>
     };
   }, [location.pathname]);
 
+  const isCameraRoute = location.pathname === '/cats/new';
+  const hasDedicatedHeader = location.pathname.startsWith('/cats/') || location.pathname.startsWith('/sightings/');
+  const showGlobalHeader = !isCameraRoute && !hasDedicatedHeader;
+  const showBottomNav = !isCameraRoute;
+
   return (
     <div className="app-shell">
-      <Header catCount={count} />
+      {showGlobalHeader && <Header catCount={count} />}
       <PwaUpdatePrompt />
-      {!isOnline && (
+      {!isOnline && !isCameraRoute && (
         <div className="offline-notice-bar" role="status">
-          <span>Offline mode — viewing saved local cats. Map tiles require network.</span>
+          <span>Mode luring aktif: Menampilkan data tersimpan. Ubin peta membutuhkan koneksi internet.</span>
         </div>
       )}
-      <main className="app-content">
+      <main className="app-content" style={isCameraRoute ? { padding: 0 } : undefined}>
         <Outlet />
       </main>
-      <BottomNav />
+      {showBottomNav && <BottomNav />}
     </div>
   );
 };

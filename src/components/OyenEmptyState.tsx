@@ -47,7 +47,7 @@ export const OyenEmptyState: React.FC<OyenEmptyStateProps> = ({
       <div className="oyen-empty-state-card">
         <img
           src={OYEN_ASSETS[variant]}
-          alt={`Oyen maskot ProwlLog`}
+          alt={`Oyen maskot Cuking`}
           className="oyen-mascot-img"
           draggable={false}
         />

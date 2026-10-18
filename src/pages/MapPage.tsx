@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import { 
   Plus, 
+  Minus,
   Navigation, 
+  ZoomIn,
+  ZoomOut,
   MapPin, 
   X, 
   Footprints, 
@@ -25,6 +28,12 @@ import { resolveBadge, formatBreedLabel, formatCatTraitLine } from '../config/ca
 import { CatPhotoImg } from '../components/CatPhotoImg';
 import { useUserProfile, type UserProfile } from '../utils/useUserProfile';
 import { OyenEmptyState } from '../components/OyenEmptyState';
+
+export type LocationCycleState = 'idle' | 'user-nearby' | 'user-max-detail';
+
+export const ZOOM_OVERVIEW = 13;
+export const ZOOM_NEARBY = 16.5;
+export const ZOOM_MAX_DETAIL = 19;
 
 // Persist last map center and zoom level across route transitions
 let cachedMapViewState: { center: [number, number]; zoom: number } | null = null;
@@ -108,7 +117,7 @@ function createCatMarkerIcon(marker: MapMarkerData, isSelected = false): L.DivIc
   });
 }
 
-export function createStackedClusterIcon(group: MarkerGroup): L.DivIcon {
+function createStackedClusterIcon(group: MarkerGroup): L.DivIcon {
   const count = group.markers.length;
   const stackModel = computeClusterStackModel(count);
   const displayedMarkers = group.markers.slice(0, stackModel.displayedCount);
@@ -203,6 +212,10 @@ export const MapPage: React.FC = () => {
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoNotice, setGeoNotice] = useState<string | null>(null);
 
+  // 3-Stage Location Zoom Cycle: 'idle' -> 'user-nearby' -> 'user-max-detail' -> 'idle'
+  const [locationCycleState, setLocationCycleState] = useState<LocationCycleState>('idle');
+  const preCycleCameraRef = useRef<{ center: [number, number]; zoom: number } | null>(null);
+
   // 1. Load Sighting Markers from Database
   const loadMarkers = useCallback(async () => {
     setIsLoading(true);
@@ -211,17 +224,34 @@ export const MapPage: React.FC = () => {
     try {
       const markers = await mapService.getMapMarkers();
       
-      // Cleanup previous Blob URLs
-      mapService.revokeMarkerPhotoUrls(blobUrlsRef.current);
+      // Preserve existing valid Blob URLs to prevent net::ERR_FILE_NOT_FOUND on active pins
+      const nextUrls = new Map<string, string>();
+      for (const m of markers) {
+        if (!m.photoBlob) continue;
+        const existing = blobUrlsRef.current.get(m.sightingId);
+        if (existing) {
+          nextUrls.set(m.sightingId, existing);
+        } else if (typeof URL !== 'undefined' && URL.createObjectURL) {
+          nextUrls.set(m.sightingId, URL.createObjectURL(m.photoBlob));
+        }
+      }
 
-      // Create new Blob URLs
-      const urls = mapService.createMarkerPhotoUrls(markers);
-      blobUrlsRef.current = urls;
+      // Revoke only sighting URLs that were removed
+      for (const [id, url] of blobUrlsRef.current.entries()) {
+        if (!nextUrls.has(id)) {
+          try {
+            URL.revokeObjectURL(url);
+          } catch {
+            // Safe ignore
+          }
+        }
+      }
+      blobUrlsRef.current = nextUrls;
 
       // Attach transient URLs
       const enriched = markers.map((m) => ({
         ...m,
-        photoUrl: urls.get(m.sightingId),
+        photoUrl: nextUrls.get(m.sightingId),
       }));
 
       setMarkersData(enriched);
@@ -239,7 +269,7 @@ export const MapPage: React.FC = () => {
     const initialCenter = (cachedUserLocation && isValidCoordinates(cachedUserLocation.latitude, cachedUserLocation.longitude))
       ? [cachedUserLocation.latitude, cachedUserLocation.longitude]
       : (cachedMapViewState?.center ?? defaultMapConfig.defaultCenter);
-    const initialZoom = cachedUserLocation ? 17 : (cachedMapViewState?.zoom ?? defaultMapConfig.defaultZoom);
+    const initialZoom = cachedMapViewState?.zoom ?? ZOOM_OVERVIEW;
 
     const map = L.map(mapContainerRef.current, {
       center: initialCenter as L.LatLngExpression,
@@ -276,9 +306,6 @@ export const MapPage: React.FC = () => {
 
     tileLayer.addTo(map);
 
-    // Zoom controls positioned at top-left
-    L.control.zoom({ position: 'topleft' }).addTo(map);
-
     // Marker Layer Group
     const markersLayer = L.layerGroup().addTo(map);
     markersLayerRef.current = markersLayer;
@@ -290,6 +317,12 @@ export const MapPage: React.FC = () => {
       setSelectedMarker(null);
       setSpiderfiedGroupId(null);
       setAreaCatListGroup(null);
+    });
+
+    // Reset location cycle state to idle when user manually drags/pans map away
+    map.on('dragstart', () => {
+      setLocationCycleState('idle');
+      preCycleCameraRef.current = null;
     });
 
     // Track zoom and move to recalculate clusters dynamically & cache view state
@@ -330,6 +363,22 @@ export const MapPage: React.FC = () => {
       userMarkerRef.current = null;
       mapService.revokeMarkerPhotoUrls(blobUrlsRef.current);
     };
+  }, []);
+
+  // Update user avatar marker when profile changes without tearing down the entire map
+  useEffect(() => {
+    if (userMarkerRef.current) {
+      userMarkerRef.current.setIcon(createUserAvatarIcon(profile));
+      const pos = lastKnownUserPosRef.current || cachedUserLocation;
+      if (pos) {
+        userMarkerRef.current.bindPopup(`
+          <div class="user-map-popup">
+            <strong>${profile.nickname || 'Cat Explorer'}</strong>
+            <small>Lokasi Anda saat ini (±${pos.accuracy}m)</small>
+          </div>
+        `);
+      }
+    }
   }, [profile]);
 
   // Listen for online / offline events
@@ -548,110 +597,187 @@ export const MapPage: React.FC = () => {
     }
   }, [selectedMarker]);
 
-  // Handle GPS Centering & Auto-location
-  const centerOnUserLocation = useCallback(async (isManualTrigger = false) => {
-    setGeoLoading(true);
-    if (isManualTrigger) {
-      setGeoNotice(null);
-    }
-
+  // 3-State GPS Location Toggle:
+  // Stage 1 ('idle' -> 'user-nearby'): Locate & Zoom In to nearby area (ZOOM_NEARBY = 16.5)
+  // Stage 2 ('user-nearby' -> 'user-max-detail'): Zoom In closer to maximum realistic detail (ZOOM_MAX_DETAIL = 19)
+  // Stage 3 ('user-max-detail' -> 'idle'): Zoom Out to wider view (ZOOM_OVERVIEW = 13 or snapshot) and reset
+  const handleLocationCycleClick = async () => {
     const map = mapInstanceRef.current;
-    if (!map) {
-      setGeoLoading(false);
-      return;
-    }
+    if (!map || geoLoading) return;
 
-    // Reuse existing valid location immediately if available (fast response without zoom-out)
-    const existing = lastKnownUserPosRef.current || cachedUserLocation;
-    if (
-      existing &&
-      isValidCoordinates(existing.latitude, existing.longitude)
-    ) {
-      hasInitialFitRef.current = true;
-      const currentZoom = map.getZoom();
-      const targetZoom = Math.max(currentZoom, 17);
-      map.flyTo([existing.latitude, existing.longitude], targetZoom, {
-        animate: true,
-        duration: 0.5,
-      });
-      cachedMapViewState = {
-        center: [existing.latitude, existing.longitude],
-        zoom: targetZoom,
+    // Halt any in-flight Leaflet animation to prevent animation queueing or inconsistent state
+    map.stop();
+
+    if (locationCycleState === 'idle') {
+      // --- TAHAP 1: Locate & Zoom In to Nearby Area ---
+      // Save camera snapshot before moving (for Stage 3 return if needed)
+      preCycleCameraRef.current = {
+        center: [map.getCenter().lat, map.getCenter().lng],
+        zoom: map.getZoom(),
       };
 
-      // Add or update avatar marker immediately
-      if (!userMarkerRef.current) {
-        userMarkerRef.current = L.marker([existing.latitude, existing.longitude], {
-          icon: createUserAvatarIcon(profile),
-          zIndexOffset: 1500,
-        }).addTo(map);
-      } else {
-        userMarkerRef.current.setLatLng([existing.latitude, existing.longitude]);
-        userMarkerRef.current.setIcon(createUserAvatarIcon(profile));
-      }
-    }
+      let userPos = lastKnownUserPosRef.current || cachedUserLocation;
 
-    try {
-      const pos = await getCurrentDeviceLocation();
-      if (!isValidCoordinates(pos.latitude, pos.longitude)) {
-        throw new Error('Koordinat lokasi tidak valid.');
+      if (!userPos || !isValidCoordinates(userPos.latitude, userPos.longitude)) {
+        setGeoLoading(true);
+        setGeoNotice(null);
+        try {
+          const freshPos = await getCurrentDeviceLocation();
+          if (!isValidCoordinates(freshPos.latitude, freshPos.longitude)) {
+            throw new Error('Koordinat lokasi tidak valid.');
+          }
+          userPos = freshPos;
+          cachedUserLocation = freshPos;
+          lastKnownUserPosRef.current = freshPos;
+        } catch (err: unknown) {
+          const msg = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Lokasi tidak tersedia.';
+          setGeoNotice(msg);
+          setTimeout(() => setGeoNotice(null), 4000);
+          setGeoLoading(false);
+          // Do not advance cycle state if geolocation fails
+          return;
+        } finally {
+          setGeoLoading(false);
+        }
       }
 
-      cachedUserLocation = pos;
-      lastKnownUserPosRef.current = pos;
       hasInitialFitRef.current = true;
-
-      const currentZoom = map.getZoom();
-      const targetZoom = Math.max(currentZoom, 17);
-
-      map.flyTo([pos.latitude, pos.longitude], targetZoom, {
-        animate: true,
-        duration: 0.7,
-      });
-
-      cachedMapViewState = {
-        center: [pos.latitude, pos.longitude],
-        zoom: targetZoom,
-      };
 
       // Add or update personal avatar marker
       if (!userMarkerRef.current) {
-        userMarkerRef.current = L.marker([pos.latitude, pos.longitude], {
+        userMarkerRef.current = L.marker([userPos.latitude, userPos.longitude], {
           icon: createUserAvatarIcon(profile),
           zIndexOffset: 1500,
         }).addTo(map);
       } else {
-        userMarkerRef.current.setLatLng([pos.latitude, pos.longitude]);
+        userMarkerRef.current.setLatLng([userPos.latitude, userPos.longitude]);
         userMarkerRef.current.setIcon(createUserAvatarIcon(profile));
       }
 
       const popupHtml = `
         <div class="user-map-popup">
           <strong>${profile.nickname || 'Cat Explorer'}</strong>
-          <small>Lokasi Anda saat ini (±${pos.accuracy}m)</small>
+          <small>Lokasi Anda saat ini (±${userPos.accuracy}m)</small>
         </div>
       `;
       userMarkerRef.current.bindPopup(popupHtml);
-    } catch (err: unknown) {
-      if (isManualTrigger) {
-        const msg = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Lokasi tidak tersedia.';
-        setGeoNotice(msg);
-        setTimeout(() => setGeoNotice(null), 4000);
+
+      // Smoothly zoom in to nearby detail (never zoom out here)
+      map.flyTo([userPos.latitude, userPos.longitude], ZOOM_NEARBY, {
+        animate: true,
+        duration: 0.6,
+      });
+
+      cachedMapViewState = {
+        center: [userPos.latitude, userPos.longitude],
+        zoom: ZOOM_NEARBY,
+      };
+
+      setLocationCycleState('user-nearby');
+
+    } else if (locationCycleState === 'user-nearby') {
+      // --- TAHAP 2: Maximum Detail ---
+      const userPos = lastKnownUserPosRef.current || cachedUserLocation;
+      if (!userPos || !isValidCoordinates(userPos.latitude, userPos.longitude)) {
+        setLocationCycleState('idle');
+        return;
       }
-    } finally {
-      setGeoLoading(false);
+
+      hasInitialFitRef.current = true;
+
+      // Retain user coordinate as center, zoom-in closer to realistic maximum (19) without new GPS call
+      map.flyTo([userPos.latitude, userPos.longitude], ZOOM_MAX_DETAIL, {
+        animate: true,
+        duration: 0.5,
+      });
+
+      cachedMapViewState = {
+        center: [userPos.latitude, userPos.longitude],
+        zoom: ZOOM_MAX_DETAIL,
+      };
+
+      setLocationCycleState('user-max-detail');
+
+    } else if (locationCycleState === 'user-max-detail') {
+      // --- TAHAP 3: Zoom Out & Reset Cycle ---
+      const snapshot = preCycleCameraRef.current;
+      const userPos = lastKnownUserPosRef.current || cachedUserLocation;
+
+      // Prioritize restoring camera position before cycle started if broad (< 15)
+      const targetCenter: [number, number] = (snapshot && snapshot.zoom < 15)
+        ? snapshot.center
+        : (userPos ? [userPos.latitude, userPos.longitude] : defaultMapConfig.defaultCenter);
+      const targetZoom = (snapshot && snapshot.zoom < 15)
+        ? snapshot.zoom
+        : ZOOM_OVERVIEW;
+
+      map.flyTo(targetCenter, targetZoom, {
+        animate: true,
+        duration: 0.6,
+      });
+
+      cachedMapViewState = {
+        center: targetCenter,
+        zoom: targetZoom,
+      };
+
+      // Reset camera snapshot and return cycle state to idle
+      preCycleCameraRef.current = null;
+      setLocationCycleState('idle');
+    }
+  };
+
+  // Background auto-location on initial map mount: places avatar marker and keeps user coordinates fresh
+  const autoLocateOnMount = useCallback(async () => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const cached = lastKnownUserPosRef.current || cachedUserLocation;
+    if (cached && isValidCoordinates(cached.latitude, cached.longitude)) {
+      if (!userMarkerRef.current) {
+        userMarkerRef.current = L.marker([cached.latitude, cached.longitude], {
+          icon: createUserAvatarIcon(profile),
+          zIndexOffset: 1500,
+        }).addTo(map);
+      }
+    }
+
+    try {
+      const pos = await getCurrentDeviceLocation();
+      if (!isValidCoordinates(pos.latitude, pos.longitude)) return;
+
+      cachedUserLocation = pos;
+      lastKnownUserPosRef.current = pos;
+
+      if (!userMarkerRef.current && mapInstanceRef.current) {
+        userMarkerRef.current = L.marker([pos.latitude, pos.longitude], {
+          icon: createUserAvatarIcon(profile),
+          zIndexOffset: 1500,
+        }).addTo(mapInstanceRef.current);
+      } else if (userMarkerRef.current) {
+        userMarkerRef.current.setLatLng([pos.latitude, pos.longitude]);
+        userMarkerRef.current.setIcon(createUserAvatarIcon(profile));
+      }
+
+      if (userMarkerRef.current) {
+        const popupHtml = `
+          <div class="user-map-popup">
+            <strong>${profile.nickname || 'Cat Explorer'}</strong>
+            <small>Lokasi Anda saat ini (±${pos.accuracy}m)</small>
+          </div>
+        `;
+        userMarkerRef.current.bindPopup(popupHtml);
+      }
+    } catch {
+      // Silent graceful fallback for background auto-locate
     }
   }, [profile]);
 
-  // Load data & auto-locate user on every map open
   useEffect(() => {
     loadMarkers();
-    centerOnUserLocation(false);
-  }, [loadMarkers, centerOnUserLocation]);
-
-  const handleCenterOnUser = () => {
-    centerOnUserLocation(true);
-  };
+    autoLocateOnMount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="map-page-container" id="map-page">
@@ -659,17 +785,67 @@ export const MapPage: React.FC = () => {
       <div className="map-container-full">
         <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} id="leaflet-map-canvas" />
 
-        {/* Floating Controls: GPS My Location Button */}
+        {/* Floating Zoom Controls: Zoom In & Zoom Out pill (Top Left per Mockup Screen 1) */}
+        <div className="map-zoom-pill" id="map-zoom-pill" aria-label="Kontrol Perbesaran Peta">
+          <button
+            type="button"
+            className="map-zoom-btn"
+            onClick={() => mapInstanceRef.current?.zoomIn()}
+            aria-label="Perbesar peta"
+            title="Perbesar peta"
+            id="btn-map-zoom-in"
+          >
+            <Plus size={18} />
+          </button>
+          <button
+            type="button"
+            className="map-zoom-btn"
+            onClick={() => mapInstanceRef.current?.zoomOut()}
+            aria-label="Perkecil peta"
+            title="Perkecil peta"
+            id="btn-map-zoom-out"
+          >
+            <Minus size={18} />
+          </button>
+        </div>
+
+        {/* Floating Controls: GPS My Location 3-State Toggle Button */}
         <button
           type="button"
-          className="map-my-location-btn"
-          onClick={handleCenterOnUser}
+          className={`map-my-location-btn ${
+            locationCycleState === 'user-nearby'
+              ? 'map-my-location-btn--nearby'
+              : locationCycleState === 'user-max-detail'
+              ? 'map-my-location-btn--max'
+              : ''
+          }`}
+          onClick={handleLocationCycleClick}
           disabled={geoLoading}
-          aria-label="Pusatkan ke lokasi saya"
+          aria-label={
+            locationCycleState === 'idle'
+              ? 'Pusatkan dan zoom ke lokasi saya'
+              : locationCycleState === 'user-nearby'
+              ? 'Perbesar ke detail maksimal'
+              : 'Perluas tampilan peta'
+          }
+          title={
+            locationCycleState === 'idle'
+              ? 'Pusatkan ke lokasi saya'
+              : locationCycleState === 'user-nearby'
+              ? 'Perbesar detail maksimal'
+              : 'Perluas tampilan peta'
+          }
           id="btn-map-my-location"
-          title="Pusatkan ke lokasi saya"
         >
-          <Navigation size={18} className={geoLoading ? 'animate-spin' : ''} />
+          {geoLoading ? (
+            <Navigation size={18} className="animate-spin" />
+          ) : locationCycleState === 'user-nearby' ? (
+            <ZoomIn size={18} />
+          ) : locationCycleState === 'user-max-detail' ? (
+            <ZoomOut size={18} />
+          ) : (
+            <Navigation size={18} />
+          )}
         </button>
 
         {/* GPS Status Toast */}

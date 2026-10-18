@@ -22,7 +22,7 @@ export const PwaUpdatePrompt: React.FC = () => {
       <div className="pwa-update-content">
         <Sparkles size={16} className="pwa-update-icon" />
         <span className="pwa-update-message">
-          A new version of ProwlLog is ready. Update whenever you have saved your work.
+          A new version of Cuking is ready. Update whenever you have saved your work.
         </span>
       </div>
       <div className="pwa-update-actions">
