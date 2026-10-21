@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import { 
-  Plus, 
+  Plus,
   Minus,
   Navigation, 
   ZoomIn,
@@ -12,14 +12,14 @@ import {
   Footprints, 
   ArrowRight,
   AlertCircle,
-  WifiOff
+  WifiOff,
+  Camera
 } from 'lucide-react';
 import { defaultMapConfig } from '../config/mapConfig';
 import { mapService, type MapMarkerData } from '../services/mapService';
 import { 
   getCurrentDeviceLocation, 
   groupMarkersBy50mRadius, 
-  computeClusterStackModel, 
   isValidCoordinates,
   type GeoLocationResult,
   type MarkerGroup 
@@ -117,67 +117,58 @@ function createCatMarkerIcon(marker: MapMarkerData, isSelected = false): L.DivIc
   });
 }
 
-function createStackedClusterIcon(group: MarkerGroup): L.DivIcon {
-  const count = group.markers.length;
-  const stackModel = computeClusterStackModel(count);
-  const displayedMarkers = group.markers.slice(0, stackModel.displayedCount);
-
-  let stackHtml = '';
-  let iconWidth = 62;
-  let iconHeight = 48;
-  let anchorX = 31;
-  let anchorY = 24;
-
-  const itemSize = count === 2 ? 42 : 40;
-
-  if (count === 2) {
-    iconWidth = 62;
-    iconHeight = 48;
-    anchorX = 31;
-    anchorY = 24;
-
-    stackHtml = `
-      <div class="cat-cluster-stack cat-cluster-stack-2" id="cluster-${group.id}">
-        <div class="cat-cluster-stack-slot slot-0" style="left: 0px; top: 0px; z-index: 1;">
-          ${renderCatPhotoCircle(displayedMarkers[0], itemSize)}
-        </div>
-        <div class="cat-cluster-stack-slot slot-1" style="left: 20px; top: 6px; z-index: 2;">
-          ${renderCatPhotoCircle(displayedMarkers[1], itemSize)}
-        </div>
-      </div>
-    `;
-  } else {
-    // 3 or more cats
-    iconWidth = 68;
-    iconHeight = 56;
-    anchorX = 34;
-    anchorY = 28;
-
-    const extraBadgeHtml = stackModel.hasExtra
-      ? `<div class="cat-cluster-extra-badge" title="${count} kucing di area ini">${stackModel.extraLabel}</div>`
-      : '';
-
-    stackHtml = `
-      <div class="cat-cluster-stack cat-cluster-stack-multi" id="cluster-${group.id}">
-        <div class="cat-cluster-stack-slot slot-0" style="left: 0px; top: 0px; z-index: 1;">
-          ${renderCatPhotoCircle(displayedMarkers[0], itemSize)}
-        </div>
-        <div class="cat-cluster-stack-slot slot-1" style="left: 26px; top: 0px; z-index: 1;">
-          ${renderCatPhotoCircle(displayedMarkers[1], itemSize)}
-        </div>
-        <div class="cat-cluster-stack-slot slot-2" style="left: 13px; top: 15px; z-index: 2;">
-          ${renderCatPhotoCircle(displayedMarkers[2], itemSize)}
-        </div>
-        ${extraBadgeHtml}
+function renderCatCardPhoto(marker: MapMarkerData | undefined): string {
+  if (!marker || !marker.photoUrl) {
+    return `
+      <div class="cat-stack-card-fallback">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 5c.67 0 1.35.09 2 .26 1.78-2 5.03-2.84 6.42-2.26 1.4.58-.42 7-.42 7 .57 1.07 1 2.24 1 3.44C21 17.9 16.97 21 12 21s-9-3-9-7.56c0-1.25.5-2.4 1-3.44 0 0-1.89-6.42-.5-7 1.39-.58 4.72.23 6.5 2.23A9.04 9.04 0 0 1 12 5Z"/>
+          <path d="M8 14v.5"/><path d="M16 14v.5"/><path d="M11.25 16.25h1.5L12 17l-.75-.75Z"/>
+        </svg>
       </div>
     `;
   }
 
+  const focalX = marker.focalX ?? 0.5;
+  const focalY = marker.focalY ?? 0.5;
+  const zoom = marker.zoom ?? 1.0;
+  const objectPosition = `${(focalX * 100).toFixed(1)}% ${(focalY * 100).toFixed(1)}%`;
+  const transform = zoom > 1.001 ? `transform: scale(${zoom.toFixed(2)}); transform-origin: ${objectPosition};` : '';
+
+  return `<img src="${marker.photoUrl}" alt="${marker.catName}" class="cat-stack-card-img" style="object-position: ${objectPosition}; ${transform}" />`;
+}
+
+function createStackedClusterIcon(group: MarkerGroup): L.DivIcon {
+  const count = group.markers.length;
+  const markerFront = group.markers[0];
+  const markerBack = group.markers[1] || group.markers[0];
+
+  const stackHtml = `
+    <div class="cat-stack-pin-container" id="cluster-${group.id}">
+      <div class="cat-stack-cards-wrapper">
+        <div class="cat-stack-card cat-stack-card-back">
+          ${renderCatCardPhoto(markerBack)}
+        </div>
+        <div class="cat-stack-card cat-stack-card-front">
+          ${renderCatCardPhoto(markerFront)}
+        </div>
+        <div class="cat-stack-badge" title="${count} kucing di lokasi ini">
+          <svg class="cat-stack-badge-icon" viewBox="0 0 24 20" fill="currentColor" aria-hidden="true">
+            <path d="M18.5 7.5c-.8 0-1.4.3-1.9.8l-.5-1.4c-.2-.5-.7-.8-1.3-.8h-3.4c-.6 0-1.2.3-1.5.8L10 8.8H7.8c-.4-.7-.9-1.2-1.5-1.6l1.2-3.5c.1-.4 0-.8-.3-1.1-.3-.3-.7-.4-1.1-.3L3.8 3 2.6 1.3C2.4 1 2 .9 1.6 1c-.4.2-.6.5-.6.9l.4 4.8C.8 7.6.4 8.9.4 10.4c0 3.6 2.7 6.5 6.2 6.5h1.2l.6 4c.1.6.6 1 1.2 1s1.1-.4 1.2-1l.8-5h3l.8 5c.1.6.6 1 1.2 1s1.1-.4 1.2-1l.7-4.2c1.7-.8 2.9-2.5 2.9-4.5 0-1.2-.4-2.2-1-3l.8-1.8c.4-.9-.3-2-1.4-2zm-3.5 1.5c.3 0 .5.2.5.5v1c0 1.1-.9 2-2 2h-1c-.6 0-1-.4-1-1s.4-1 1-1h1v-1c0-.3.2-.5.5-.5z"/>
+          </svg>
+          <span class="cat-stack-badge-count">${count}</span>
+        </div>
+      </div>
+      <div class="cat-stack-pointer-arrow"></div>
+    </div>
+  `;
+
   return L.divIcon({
     className: 'cat-cluster-stack-container',
     html: stackHtml,
-    iconSize: [iconWidth, iconHeight],
-    iconAnchor: [anchorX, anchorY],
+    iconSize: [68, 70],
+    iconAnchor: [34, 70],
+    popupAnchor: [0, -70],
   });
 }
 
@@ -277,6 +268,7 @@ export const MapPage: React.FC = () => {
       minZoom: defaultMapConfig.minZoom,
       maxZoom: defaultMapConfig.maxZoom,
       zoomControl: false,
+      attributionControl: false,
     });
 
     // If cached location already exists, place avatar marker immediately
@@ -1111,11 +1103,10 @@ export const MapPage: React.FC = () => {
             type="button"
             className="fab-button"
             onClick={() => navigate('/cats/new')}
-            aria-label="Tambah kucing baru"
+            aria-label="Ambil foto kucing baru"
             id="global-quick-capture-fab"
           >
-            <Plus size={20} />
-            <span>Tambah Kucing</span>
+            <Camera size={26} aria-hidden="true" />
           </button>
         </div>
       )}

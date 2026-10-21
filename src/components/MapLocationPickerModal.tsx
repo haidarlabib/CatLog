@@ -83,6 +83,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       center: startCenter,
       zoom: startZoom,
       zoomControl: false,
+      attributionControl: false,
     });
 
     // Add Tile Layer with proper attribution

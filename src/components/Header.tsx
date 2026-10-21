@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Wifi, WifiOff } from 'lucide-react';
 
 interface HeaderProps {
@@ -23,16 +24,14 @@ export const Header: React.FC<HeaderProps> = ({ catCount = 0 }) => {
 
   return (
     <header className="app-header">
-      <div className="brand-wrapper">
+      <Link to="/" className="brand-wrapper" aria-label="Cuking Beranda">
         <img
-          src="/logo.png"
-          alt="Cuking logo"
-          className="brand-logo-img"
-          width="32"
-          height="32"
+          src="/cuking logo.png"
+          alt="Cuking"
+          className="brand-title-img"
+          height="38"
         />
-        <span className="brand-title">Cuking</span>
-      </div>
+      </Link>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <div className="header-status-pill" title={`Total kucing terdata: ${catCount}`}>

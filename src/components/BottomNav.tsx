@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Map, Footprints, Settings } from 'lucide-react';
+import { Map, PawPrint, Settings } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
   return (
@@ -13,7 +13,7 @@ export const BottomNav: React.FC = () => {
           id="nav-tab-map"
         >
           <Map className="nav-item-icon" aria-hidden="true" />
-          <span className="nav-item-label">Peta</span>
+          <span className="nav-item-label">MyWorld</span>
         </NavLink>
 
         <NavLink
@@ -21,8 +21,8 @@ export const BottomNav: React.FC = () => {
           className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
           id="nav-tab-catalog"
         >
-          <Footprints className="nav-item-icon" aria-hidden="true" />
-          <span className="nav-item-label">Katalog Kucing</span>
+          <PawPrint className="nav-item-icon" aria-hidden="true" />
+          <span className="nav-item-label">CatLog</span>
         </NavLink>
 
         <NavLink

@@ -45,16 +45,13 @@ export const CatalogPage: React.FC = () => {
   }, [searchQuery, loadCats]);
 
   return (
-    <div className="page-container" id="catalog-page" style={{ paddingBottom: 'calc(var(--bottom-nav-height) + 24px)' }}>
-      {/* Title & Counter */}
+    <div className="page-container catalog-page-container" id="catalog-page">
+      {/* Title */}
       <div className="page-header-row">
         <div>
           <h1 className="page-title">Katalog Kucing</h1>
           <span className="page-subtitle">Koleksi kucing yang kamu temui</span>
         </div>
-        <span className="brand-badge" id="catalog-count-badge">
-          {cats.length} Kucing
-        </span>
       </div>
 
       {/* Search Input Bar */}
@@ -180,6 +177,7 @@ export const CatalogPage: React.FC = () => {
               description="Yuk, catat kucing pertama yang kamu temui."
               ctaLabel="Tambah Kucing"
               onCtaClick={() => navigate('/cats/new')}
+              className="catalog-empty-state"
             />
           )}
         </>
