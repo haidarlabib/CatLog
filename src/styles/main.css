@@ -578,23 +578,26 @@ input, select, textarea {
 }
 
 .cat-card {
-  background-color: var(--color-surface);
+  background-color: var(--color-surface, #ffffff);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-lg, 18px);
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 8px -2px rgba(28, 25, 23, 0.05), 0 1px 3px rgba(28, 25, 23, 0.03);
   display: flex;
   flex-direction: column;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.25s ease;
   cursor: pointer;
   text-decoration: none;
   color: inherit;
+  position: relative;
 }
 
 .cat-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-card);
-  border-color: var(--color-border-focus);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px -4px rgba(28, 25, 23, 0.1), 0 4px 10px -2px rgba(28, 25, 23, 0.04);
+  border-color: rgba(217, 107, 67, 0.35);
 }
 
 .cat-card-media {
@@ -603,17 +606,8 @@ input, select, textarea {
   aspect-ratio: 1 / 1;
   background-color: var(--color-surface-subtle);
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-2);
-}
-
-.cat-card-media .cat-photo-badge-wrap {
-  width: 100%;
-  height: 100%;
-  max-width: 135px;
-  max-height: 135px;
+  display: block;
+  padding: 0;
 }
 
 .cat-card-img {
@@ -621,6 +615,11 @@ input, select, textarea {
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cat-card:hover .cat-card-img {
+  transform: scale(1.035);
 }
 
 .cat-card-placeholder {
@@ -630,57 +629,92 @@ input, select, textarea {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-surface-subtle));
-  color: var(--color-primary);
-  opacity: 0.85;
+  background: linear-gradient(145deg, var(--color-surface-subtle), var(--color-primary-light, #fef4ee));
+  color: var(--color-primary, #d96b43);
+  opacity: 0.9;
 }
 
 .cat-card-body {
-  padding: var(--space-3);
+  padding: 12px 14px 14px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 6px;
   flex: 1;
+  background-color: var(--color-surface, #ffffff);
+}
+
+.cat-card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
 }
 
 .cat-card-title {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-bold);
+  font-size: 15px;
+  font-weight: 700;
   color: var(--color-text-primary);
   line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.015em;
 }
 
 .cat-card-more-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   color: var(--color-text-muted);
+  opacity: 0.6;
   transition: all var(--transition-fast);
+  flex-shrink: 0;
 }
 
-.cat-card-more-btn:hover {
-  background-color: var(--color-surface-subtle);
+.cat-card:hover .cat-card-more-btn {
+  opacity: 1;
   color: var(--color-primary);
 }
 
 .cat-card-subtitle {
-  font-size: 11.5px;
-  color: var(--color-text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
   line-height: 1.3;
 }
 
-.cat-card-meta {
-  font-size: var(--font-size-xs);
+.cat-card-breed-tag {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.cat-card-coat-tag {
   color: var(--color-text-muted);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.cat-card-coat-tag::before {
+  content: "•";
+  margin-right: 5px;
+  color: var(--color-border);
+}
+
+.cat-card-meta {
+  font-size: 11.5px;
+  color: var(--color-primary);
+  font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  margin-top: auto;
+  padding-top: 6px;
 }
 
 /* Form Styles */

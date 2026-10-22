@@ -130,12 +130,11 @@ export const CatalogPage: React.FC = () => {
                       <CatPhotoImg
                         photoId={cat.coverPhotoId}
                         alt={`Foto ${cat.name}`}
-                        mode="circle"
-                        badgeId={cat.badgeRing || 'amber_monarch'}
+                        mode="square"
                       />
                     </div>
                     <div className="cat-card-body">
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
+                      <div className="cat-card-header-row">
                         <div className="cat-card-title">{cat.name}</div>
                         <span className="cat-card-more-btn" aria-hidden="true">
                           <MoreHorizontal size={14} />
@@ -143,12 +142,12 @@ export const CatalogPage: React.FC = () => {
                       </div>
                       
                       <div className="cat-card-subtitle">
-                        <div>{breedText || 'Domestik'}</div>
-                        {coatText && <div style={{ color: 'var(--color-text-subtle)', fontSize: '11px' }}>{coatText}</div>}
+                        <span className="cat-card-breed-tag">{breedText || 'Domestik'}</span>
+                        {coatText && <span className="cat-card-coat-tag">{coatText}</span>}
                       </div>
 
-                      <div className="cat-card-meta" style={{ marginTop: 'auto', paddingTop: '6px', color: 'var(--color-primary)', fontWeight: 600 }}>
-                        <MapPin size={11} style={{ flexShrink: 0 }} />
+                      <div className="cat-card-meta">
+                        <MapPin size={12} style={{ flexShrink: 0 }} />
                         <span>{cat.sightingsCount || 1} pertemuan</span>
                       </div>
                     </div>

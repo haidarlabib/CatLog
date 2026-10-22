@@ -30,7 +30,6 @@ import {
   PRESET_COAT_COLORS, 
   PRESET_PATTERNS, 
   BREED_OPTIONS,
-  getBadgeColorHex,
   resolveBadge,
   formatAppearanceLabel
 } from '../config/catAppearance';
@@ -486,13 +485,11 @@ export const AddCatPage: React.FC = () => {
 
             <div className="preview-photo-body">
               <div className="preview-avatar-wrap">
-                <div style={{ width: '96px', height: '96px' }}>
+                <div style={{ width: '96px', height: '96px', borderRadius: 'var(--radius-md, 12px)', overflow: 'hidden', border: '1px solid var(--color-border)', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
                   <CatPhotoImg
                     src={activeCoverPhoto?.previewUrl}
-                    alt="Foto Profil Kucing (Sampul)"
-                    mode="circle"
-                    badgeId={badgeRing || null}
-                    ringColor={badgeRing ? getBadgeColorHex(badgeRing) : 'var(--color-border)'}
+                    alt="Foto Sampul Kucing"
+                    mode="square"
                     crop={activeCoverPhoto?.crop}
                   />
                 </div>
