@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -9,18 +9,22 @@ import {
   Utensils, 
   CheckCircle2, 
   AlertTriangle,
-  Camera
+  Camera,
+  ChevronLeft,
+  ChevronRight,
+  Star
 } from 'lucide-react';
 import { 
   catRepository, 
   sightingRepository, 
-  feedingLogRepository 
+  feedingLogRepository,
+  photoRepository
 } from '../db';
 import { CatPhotoImg } from '../components/CatPhotoImg';
 import { formatBreedLabel, formatAppearanceLabel, resolveBadge } from '../config/catAppearance';
 import { formatIndonesianDateTime } from '../utils/date';
 import { OyenEmptyState } from '../components/OyenEmptyState';
-import type { Cat, Sighting, FeedingLog } from '../types';
+import type { Cat, Sighting, FeedingLog, CatPhoto } from '../types';
 
 export const CatDetailPage: React.FC = () => {
   const { catId } = useParams<{ catId: string }>();
@@ -30,6 +34,10 @@ export const CatDetailPage: React.FC = () => {
   const [cat, setCat] = useState<Cat | null>(null);
   const [sightings, setSightings] = useState<Sighting[]>([]);
   const [feedingLogs, setFeedingLogs] = useState<FeedingLog[]>([]);
+  const [photos, setPhotos] = useState<CatPhoto[]>([]);
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const sliderRef = useRef<HTMLDivElement>(null);
+
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(
@@ -57,14 +65,16 @@ export const CatDetailPage: React.FC = () => {
 
       setCat(foundCat);
 
-      // Load sightings and feeding logs in parallel
-      const [sightingsList, feedingList] = await Promise.all([
+      // Load sightings, feeding logs, and all cat photos in parallel
+      const [sightingsList, feedingList, photosList] = await Promise.all([
         sightingRepository.getByCatId(catId),
         feedingLogRepository.getByCatId(catId),
+        photoRepository.getByCatId(catId),
       ]);
 
       setSightings(sightingsList);
       setFeedingLogs(feedingList);
+      setPhotos(photosList);
     } catch {
       setNotFound(true);
     } finally {
@@ -98,6 +108,39 @@ export const CatDetailPage: React.FC = () => {
       setIsDeleting(false);
       setShowDeleteModal(false);
     }
+  };
+
+  // Order photos: Cover photo first, then remaining photos by createdAt descending
+  const orderedPhotos = useMemo(() => {
+    if (!photos || photos.length === 0) return [];
+    if (!cat?.coverPhotoId) return photos;
+
+    const cover = photos.find((p) => p.id === cat.coverPhotoId);
+    const others = photos.filter((p) => p.id !== cat.coverPhotoId);
+
+    return cover ? [cover, ...others] : photos;
+  }, [photos, cat?.coverPhotoId]);
+
+  const handleSliderScroll = () => {
+    const slider = sliderRef.current;
+    if (!slider) return;
+    const scrollLeft = slider.scrollLeft;
+    const width = slider.clientWidth;
+    if (width > 0) {
+      const index = Math.round(scrollLeft / width);
+      setActivePhotoIndex(index);
+    }
+  };
+
+  const scrollToSlide = (index: number) => {
+    const slider = sliderRef.current;
+    if (!slider) return;
+    const clamped = Math.max(0, Math.min(index, orderedPhotos.length - 1));
+    slider.scrollTo({
+      left: clamped * slider.clientWidth,
+      behavior: 'smooth',
+    });
+    setActivePhotoIndex(clamped);
   };
 
   if (isLoading) {
@@ -188,20 +231,111 @@ export const CatDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* Hero Photo Card with Badge Stamp */}
-      <div className="detail-hero-box" id="cat-cover-photo">
-        <CatPhotoImg
-          photoId={cat.coverPhotoId}
-          alt={`Foto ${cat.name}`}
-          className="detail-hero-img"
-        />
-        {badge && (
-          <div className="detail-hero-badge-stamp" title={`Badge: ${badge.nickname}`}>
-            <img
-              src={badge.assetPath}
-              alt={badge.nickname}
-              className="detail-hero-badge-img"
+      {/* Hero Photo Section: Minimalist Gallery Slider ("gulir-gulir") */}
+      <div className="detail-hero-box detail-gallery-container" id="cat-photo-gallery">
+        {orderedPhotos.length > 0 ? (
+          <>
+            <div
+              ref={sliderRef}
+              className="detail-gallery-slider"
+              onScroll={handleSliderScroll}
+            >
+              {orderedPhotos.map((photo, index) => {
+                const isCover = photo.id === cat.coverPhotoId;
+                return (
+                  <div key={photo.id} className="detail-gallery-slide">
+                    <CatPhotoImg
+                      photoId={photo.id}
+                      alt={`Foto ${cat.name} ${index + 1}`}
+                      className="detail-hero-img"
+                    />
+
+                    {/* Badge Character Stamp on Cover Photo */}
+                    {isCover && badge && (
+                      <div className="detail-hero-badge-stamp" title={`Badge: ${badge.nickname}`}>
+                        <img
+                          src={badge.assetPath}
+                          alt={badge.nickname}
+                          className="detail-hero-badge-img"
+                        />
+                      </div>
+                    )}
+
+                    {/* Sampul Tag on Cover Slide */}
+                    {isCover && orderedPhotos.length > 1 && (
+                      <div className="detail-hero-cover-tag">
+                        <Star size={9} fill="currentColor" />
+                        <span>Sampul</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Slider Controls & Indicators if multiple photos exist */}
+            {orderedPhotos.length > 1 && (
+              <>
+                {/* Minimalist Edge Navigation Arrows */}
+                {activePhotoIndex > 0 && (
+                  <button
+                    type="button"
+                    className="detail-gallery-edge-btn edge-prev"
+                    onClick={() => scrollToSlide(activePhotoIndex - 1)}
+                    aria-label="Foto sebelumnya"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                )}
+
+                {activePhotoIndex < orderedPhotos.length - 1 && (
+                  <button
+                    type="button"
+                    className="detail-gallery-edge-btn edge-next"
+                    onClick={() => scrollToSlide(activePhotoIndex + 1)}
+                    aria-label="Foto selanjutnya"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                )}
+
+                {/* Floating Photo Counter Capsule */}
+                <div className="detail-gallery-counter">
+                  <span>{activePhotoIndex + 1} / {orderedPhotos.length}</span>
+                </div>
+
+                {/* Minimalist Pagination Dots */}
+                <div className="detail-gallery-dots">
+                  {orderedPhotos.map((_, dotIdx) => (
+                    <button
+                      key={dotIdx}
+                      type="button"
+                      className={`detail-gallery-dot ${dotIdx === activePhotoIndex ? 'active' : ''}`}
+                      onClick={() => scrollToSlide(dotIdx)}
+                      aria-label={`Lihat foto ${dotIdx + 1}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          /* Fallback if no photos list found but coverPhotoId exists or empty */
+          <div className="detail-gallery-slide">
+            <CatPhotoImg
+              photoId={cat.coverPhotoId}
+              alt={`Foto ${cat.name}`}
+              className="detail-hero-img"
             />
+            {badge && (
+              <div className="detail-hero-badge-stamp" title={`Badge: ${badge.nickname}`}>
+                <img
+                  src={badge.assetPath}
+                  alt={badge.nickname}
+                  className="detail-hero-badge-img"
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

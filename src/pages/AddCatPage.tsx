@@ -13,15 +13,19 @@ import {
   Camera,
   RefreshCw,
   ChevronDown,
-  Palette
+  Palette,
+  Crop,
+  Star
 } from 'lucide-react';
 import { defaultMapConfig } from '../config/mapConfig';
 import { catService } from '../services/catService';
 import { getCurrentDeviceLocation, reverseGeocode, isValidCoordinates, type GeoLocationError } from '../utils/geo';
 import { MapLocationPickerModal } from '../components/MapLocationPickerModal';
+import { PhotoCropEditorModal } from '../components/PhotoCropEditorModal';
 import { CatPhotoImg } from '../components/CatPhotoImg';
 import { BadgeSelector } from '../components/BadgeSelector';
 import { catDraftStore } from '../utils/catDraftStore';
+import type { PhotoCropData } from '../utils/image';
 import { 
   PRESET_COAT_COLORS, 
   PRESET_PATTERNS, 
@@ -36,7 +40,20 @@ export const AddCatPage: React.FC = () => {
 
   // Route & state protection: a valid photo draft is strictly mandatory
   const hasPhoto = catDraftStore.hasPhotoDraft();
-  const photoDraft = catDraftStore.getPhotoDraft();
+  const [photosDraft, setPhotosDraft] = useState(() => catDraftStore.getPhotosDraft());
+  const activeCoverPhoto = photosDraft.find((p) => p.isCover) || photosDraft[0] || null;
+  const [showCropModal, setShowCropModal] = useState(false);
+
+  const handleSelectCover = (id: string) => {
+    catDraftStore.setCoverPhoto(id);
+    setPhotosDraft(catDraftStore.getPhotosDraft());
+  };
+
+  const handleSaveCrop = (crop: PhotoCropData) => {
+    catDraftStore.updateCoverCrop(crop);
+    setPhotosDraft(catDraftStore.getPhotosDraft());
+    setShowCropModal(false);
+  };
 
   // Restore preserved form draft if returning from "Ganti Foto"
   const formDraft = catDraftStore.getFormDraft();
@@ -44,16 +61,16 @@ export const AddCatPage: React.FC = () => {
   // 1. Lokasi State
   const [latitude, setLatitude] = useState<number | null>(() => {
     if (formDraft && formDraft.latitude !== null) return formDraft.latitude;
-    if (photoDraft?.location && isValidCoordinates(photoDraft.location.latitude, photoDraft.location.longitude)) {
-      return photoDraft.location.latitude;
+    if (activeCoverPhoto?.location && isValidCoordinates(activeCoverPhoto.location.latitude, activeCoverPhoto.location.longitude)) {
+      return activeCoverPhoto.location.latitude;
     }
     return null;
   });
 
   const [longitude, setLongitude] = useState<number | null>(() => {
     if (formDraft && formDraft.longitude !== null) return formDraft.longitude;
-    if (photoDraft?.location && isValidCoordinates(photoDraft.location.latitude, photoDraft.location.longitude)) {
-      return photoDraft.location.longitude;
+    if (activeCoverPhoto?.location && isValidCoordinates(activeCoverPhoto.location.latitude, activeCoverPhoto.location.longitude)) {
+      return activeCoverPhoto.location.longitude;
     }
     return null;
   });
@@ -182,14 +199,14 @@ export const AddCatPage: React.FC = () => {
 
     const badge = resolveBadge(badgeRing);
 
-    const focalX = photoDraft?.crop.focalX ?? 0.5;
-    const focalY = photoDraft?.crop.focalY ?? 0.5;
-    const zoom = photoDraft?.crop.zoom ?? 1.0;
+    const focalX = activeCoverPhoto?.crop.focalX ?? 0.5;
+    const focalY = activeCoverPhoto?.crop.focalY ?? 0.5;
+    const zoom = activeCoverPhoto?.crop.zoom ?? 1.0;
     const objectPosition = `${(focalX * 100).toFixed(1)}% ${(focalY * 100).toFixed(1)}%`;
     const transform = zoom > 1.001 ? `transform: scale(${zoom.toFixed(2)}); transform-origin: ${objectPosition};` : '';
 
-    const photoContent = photoDraft?.previewUrl
-      ? `<img src="${photoDraft.previewUrl}" alt="Marker Foto" style="width: 100%; height: 100%; object-fit: cover; object-position: ${objectPosition}; ${transform}" />`
+    const photoContent = activeCoverPhoto?.previewUrl
+      ? `<img src="${activeCoverPhoto.previewUrl}" alt="Marker Foto" style="width: 100%; height: 100%; object-fit: cover; object-position: ${objectPosition}; ${transform}" />`
       : `<div class="fallback-icon" style="color: ${badge.hex};"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4-3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4 3a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm-9 4c-3 0-5 2-5 5 0 2 2 3 5 3s5-1 5-3c0-3-2-5-5-5z"/></svg></div>`;
 
     const cal = badge.calibration;
@@ -247,7 +264,7 @@ export const AddCatPage: React.FC = () => {
     return () => {
       clearTimeout(timer);
     };
-  }, [latitude, longitude, badgeRing, photoDraft?.previewUrl, photoDraft?.crop]);
+  }, [latitude, longitude, badgeRing, activeCoverPhoto?.previewUrl, activeCoverPhoto?.crop]);
 
   // Clean up Leaflet on unmount
   useEffect(() => {
@@ -319,7 +336,7 @@ export const AddCatPage: React.FC = () => {
   };
 
   // If photo draft is missing or invalid, immediately redirect back to camera capture
-  if (!hasPhoto || !photoDraft || !photoDraft.blob) {
+  if (!hasPhoto || photosDraft.length === 0 || !activeCoverPhoto || !activeCoverPhoto.blob) {
     return <Navigate to="/cats/new" replace />;
   }
 
@@ -340,8 +357,9 @@ export const AddCatPage: React.FC = () => {
     }
 
     // Validate mandatory photo draft
-    const currentPhoto = catDraftStore.getPhotoDraft();
-    if (!currentPhoto || !currentPhoto.blob || currentPhoto.blob.size === 0) {
+    const currentPhotos = catDraftStore.getPhotosDraft();
+    const coverPhoto = catDraftStore.getCoverPhotoDraft();
+    if (currentPhotos.length === 0 || !coverPhoto || !coverPhoto.blob || coverPhoto.blob.size === 0) {
       setFormError('Foto kucing wajib diambil terlebih dahulu.');
       navigate('/cats/new', { replace: true });
       return;
@@ -371,13 +389,21 @@ export const AddCatPage: React.FC = () => {
         latitude,
         longitude,
         locationName: locationName.trim() || undefined,
-        photoBlob: currentPhoto.blob,
-        photoMimeType: currentPhoto.blob.type || 'image/jpeg',
-        focalX: currentPhoto.crop.focalX,
-        focalY: currentPhoto.crop.focalY,
-        zoom: currentPhoto.crop.zoom,
-        photoLatitude: currentPhoto.location?.latitude,
-        photoLongitude: currentPhoto.location?.longitude,
+        photos: currentPhotos.map((p) => ({
+          blob: p.blob,
+          mimeType: p.blob.type || 'image/jpeg',
+          isCover: p.isCover,
+          crop: p.crop,
+          latitude: p.location?.latitude,
+          longitude: p.location?.longitude,
+        })),
+        photoBlob: coverPhoto.blob,
+        photoMimeType: coverPhoto.blob.type || 'image/jpeg',
+        focalX: coverPhoto.crop.focalX,
+        focalY: coverPhoto.crop.focalY,
+        zoom: coverPhoto.crop.zoom,
+        photoLatitude: coverPhoto.location?.latitude,
+        photoLongitude: coverPhoto.location?.longitude,
         fedCat: false,
       });
 
@@ -432,33 +458,76 @@ export const AddCatPage: React.FC = () => {
             <div className="preview-panel-header">
               <span className="preview-panel-title">
                 <Camera size={13} style={{ color: 'var(--color-primary)' }} />
-                <span>FOTO PROFIL</span>
+                <span>FOTO SAMPUL</span>
               </span>
-              <button
-                type="button"
-                className="btn-secondary preview-panel-action"
-                onClick={handleChangePhoto}
-                id="btn-change-photo"
-                title="Ganti foto kucing"
-              >
-                <RefreshCw size={12} />
-                <span>Ubah Foto</span>
-              </button>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button
+                  type="button"
+                  className="btn-secondary preview-panel-action"
+                  onClick={() => setShowCropModal(true)}
+                  id="btn-crop-cover"
+                  title="Atur tampilan foto sampul"
+                >
+                  <Crop size={12} style={{ color: 'var(--color-primary)' }} />
+                  <span>Atur</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary preview-panel-action"
+                  onClick={handleChangePhoto}
+                  id="btn-change-photo"
+                  title="Ganti / Tambah foto kucing"
+                >
+                  <RefreshCw size={12} />
+                  <span>Foto</span>
+                </button>
+              </div>
             </div>
 
             <div className="preview-photo-body">
               <div className="preview-avatar-wrap">
                 <div style={{ width: '96px', height: '96px' }}>
                   <CatPhotoImg
-                    src={photoDraft.previewUrl}
-                    alt="Foto Profil Kucing"
+                    src={activeCoverPhoto?.previewUrl}
+                    alt="Foto Profil Kucing (Sampul)"
                     mode="circle"
                     badgeId={badgeRing || null}
                     ringColor={badgeRing ? getBadgeColorHex(badgeRing) : 'var(--color-border)'}
-                    crop={photoDraft.crop}
+                    crop={activeCoverPhoto?.crop}
                   />
                 </div>
               </div>
+
+              {/* Multi-Photo Thumbnails & Cover Selection */}
+              {photosDraft.length > 1 && (
+                <div className="add-cat-photo-strip" id="add-cat-photo-strip">
+                  <span className="add-cat-photo-strip-label">
+                    Pilih Sampul ({photosDraft.length} foto):
+                  </span>
+                  <div className="add-cat-photo-strip-row">
+                    {photosDraft.map((p, idx) => {
+                      const isCover = p.isCover;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          className={`add-cat-strip-thumb-btn ${isCover ? 'is-cover' : ''}`}
+                          onClick={() => handleSelectCover(p.id)}
+                          title={isCover ? 'Foto Sampul (Aktif)' : `Jadikan foto ${idx + 1} sebagai sampul`}
+                        >
+                          <img src={p.previewUrl} alt={`Foto ${idx + 1}`} />
+                          {isCover && (
+                            <span className="add-cat-strip-cover-pill">
+                              <Star size={7} fill="currentColor" />
+                              <span>Sampul</span>
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -598,8 +667,8 @@ export const AddCatPage: React.FC = () => {
           <BadgeSelector
             selectedBadgeId={badgeRing}
             onSelect={(id) => setBadgeRing(id)}
-            photoUrl={photoDraft.previewUrl}
-            crop={photoDraft.crop}
+            photoUrl={activeCoverPhoto?.previewUrl}
+            crop={activeCoverPhoto?.crop}
           />
         </div>
 
@@ -850,6 +919,18 @@ export const AddCatPage: React.FC = () => {
             }
           }}
           onClose={() => setShowMapPicker(false)}
+        />
+      )}
+
+      {/* Photo Crop Modal - STRICTLY FOR COVER PHOTO ONLY */}
+      {showCropModal && activeCoverPhoto && (
+        <PhotoCropEditorModal
+          imageUrl={activeCoverPhoto.previewUrl}
+          initialCrop={activeCoverPhoto.crop}
+          saveButtonText="Gunakan Foto Ini"
+          cancelButtonText="Batal"
+          onSave={handleSaveCrop}
+          onClose={() => setShowCropModal(false)}
         />
       )}
     </div>

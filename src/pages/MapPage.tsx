@@ -9,11 +9,12 @@ import {
   ZoomOut,
   MapPin, 
   X, 
-  Footprints, 
   ArrowRight,
   AlertCircle,
   WifiOff,
-  Camera
+  Camera,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { defaultMapConfig } from '../config/mapConfig';
 import { mapService, type MapMarkerData } from '../services/mapService';
@@ -24,7 +25,7 @@ import {
   type GeoLocationResult,
   type MarkerGroup 
 } from '../utils/geo';
-import { resolveBadge, formatBreedLabel, formatCatTraitLine } from '../config/catAppearance';
+import { resolveBadge, formatCatTraitLine } from '../config/catAppearance';
 import { CatPhotoImg } from '../components/CatPhotoImg';
 import { useUserProfile, type UserProfile } from '../utils/useUserProfile';
 import { OyenEmptyState } from '../components/OyenEmptyState';
@@ -138,13 +139,13 @@ function renderCatCardPhoto(marker: MapMarkerData | undefined): string {
   return `<img src="${marker.photoUrl}" alt="${marker.catName}" class="cat-stack-card-img" style="object-position: ${objectPosition}; ${transform}" />`;
 }
 
-function createStackedClusterIcon(group: MarkerGroup): L.DivIcon {
+function createStackedClusterIcon(group: MarkerGroup, isSelected = false): L.DivIcon {
   const count = group.markers.length;
   const markerFront = group.markers[0];
   const markerBack = group.markers[1] || group.markers[0];
 
   const stackHtml = `
-    <div class="cat-stack-pin-container" id="cluster-${group.id}">
+    <div class="cat-stack-pin-container${isSelected ? ' active' : ''}" id="cluster-${group.id}">
       <div class="cat-stack-cards-wrapper">
         <div class="cat-stack-card cat-stack-card-back">
           ${renderCatCardPhoto(markerBack)}
@@ -189,9 +190,22 @@ export const MapPage: React.FC = () => {
 
   const [markersData, setMarkersData] = useState<MapMarkerData[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<MapMarkerData | null>(null);
-  const [spiderfiedGroupId, setSpiderfiedGroupId] = useState<string | null>(null);
-  const [areaCatListGroup, setAreaCatListGroup] = useState<MarkerGroup | null>(null);
+  const [activeClusterGroup, setActiveClusterGroup] = useState<MarkerGroup | null>(null);
+  const [popoverPos, setPopoverPos] = useState<{ x: number; y: number } | null>(null);
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const [isClosingPopover, setIsClosingPopover] = useState(false);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mapVersion, setMapVersion] = useState(0);
+
+  const closeClusterPopover = useCallback(() => {
+    setIsClosingPopover(true);
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    closeTimeoutRef.current = setTimeout(() => {
+      setActiveClusterGroup(null);
+      setPopoverPos(null);
+      setIsClosingPopover(false);
+    }, 550);
+  }, []);
 
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -304,11 +318,10 @@ export const MapPage: React.FC = () => {
 
     mapInstanceRef.current = map;
 
-    // Map click outside marker closes preview card & spiderfy
+    // Map click outside marker closes preview card & cluster popover
     map.on('click', () => {
       setSelectedMarker(null);
-      setSpiderfiedGroupId(null);
-      setAreaCatListGroup(null);
+      closeClusterPopover();
     });
 
     // Reset location cycle state to idle when user manually drags/pans map away
@@ -385,7 +398,28 @@ export const MapPage: React.FC = () => {
     };
   }, []);
 
-  // 3. Render Leaflet Markers, Clusters & Spiderfy
+  // Synchronize Popover position with Map view on move and zoom
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !activeClusterGroup) {
+      setPopoverPos(null);
+      return;
+    }
+
+    const updatePosition = () => {
+      const pt = map.latLngToContainerPoint(activeClusterGroup.centerLatLng);
+      setPopoverPos({ x: pt.x, y: pt.y });
+    };
+
+    updatePosition();
+    map.on('move zoom', updatePosition);
+
+    return () => {
+      map.off('move zoom', updatePosition);
+    };
+  }, [activeClusterGroup]);
+
+  // 3. Render Leaflet Markers & Clusters
   useEffect(() => {
     const map = mapInstanceRef.current;
     const layer = markersLayerRef.current;
@@ -417,15 +451,18 @@ export const MapPage: React.FC = () => {
 
         leafletMarker.on('click', (e) => {
           L.DomEvent.stopPropagation(e);
-          setSelectedMarker(marker);
-          setAreaCatListGroup(null);
-          setSpiderfiedGroupId(null);
-
-          const currentZoom = map.getZoom();
-          const targetZoom = Math.max(currentZoom, 17);
-          map.flyTo([marker.latitude, marker.longitude], targetZoom, {
-            animate: true,
-            duration: 0.5,
+          closeClusterPopover();
+          setSelectedMarker((current) => {
+            if (current?.sightingId === marker.sightingId) {
+              return null;
+            }
+            const currentZoom = map.getZoom();
+            const targetZoom = Math.max(currentZoom, 17);
+            map.flyTo([marker.latitude, marker.longitude], targetZoom, {
+              animate: true,
+              duration: 0.5,
+            });
+            return marker;
           });
         });
 
@@ -439,83 +476,14 @@ export const MapPage: React.FC = () => {
         latLngBounds.push([m.latitude, m.longitude]);
       });
 
-      // If this group is currently spiderfied
-      if (spiderfiedGroupId === group.id) {
-        const centerPt = map.latLngToLayerPoint(group.centerLatLng);
-        const N = group.markers.length;
-        const radius = N <= 2 ? 46 : N <= 4 ? 54 : N <= 8 ? 64 : 76;
-
-        // Central hub button to collapse spiderfy
-        const centerHubIcon = L.divIcon({
-          className: 'cat-spider-center-hub-container',
-          html: `
-            <div class="cat-spider-center-hub" title="Tutup sebaran kucing">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </div>
-          `,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
-        });
-
-        const hubMarker = L.marker(group.centerLatLng, {
-          icon: centerHubIcon,
-          zIndexOffset: 2500,
-        });
-
-        hubMarker.on('click', (e) => {
-          L.DomEvent.stopPropagation(e);
-          setSpiderfiedGroupId(null);
-          setAreaCatListGroup(null);
-        });
-
-        layer.addLayer(hubMarker);
-
-        // Render each spiderfied cat pin & connector line
-        group.markers.forEach((m, idx) => {
-          const angle = (2 * Math.PI * idx) / N - Math.PI / 2;
-          const spiderPt = centerPt.add(L.point(Math.cos(angle) * radius, Math.sin(angle) * radius));
-          const spiderLatLng = map.layerPointToLatLng(spiderPt);
-
-          // Connecting line
-          const line = L.polyline([group.centerLatLng, spiderLatLng], {
-            color: '#237787',
-            weight: 2,
-            opacity: 0.6,
-            dashArray: '3, 4',
-          });
-          layer.addLayer(line);
-
-          // Pin
-          const customIcon = createCatMarkerIcon(m, selectedMarker?.sightingId === m.sightingId);
-          const leafletMarker = L.marker(spiderLatLng, {
-            icon: customIcon,
-            title: m.catName,
-            zIndexOffset: selectedMarker?.sightingId === m.sightingId ? 2000 : 1200,
-          });
-
-          leafletMarker.on('click', (e) => {
-            L.DomEvent.stopPropagation(e);
-            setSelectedMarker(m);
-            setAreaCatListGroup(null);
-          });
-
-          layer.addLayer(leafletMarker);
-          markersInstancesRef.current.set(m.sightingId, leafletMarker);
-        });
-
-        return;
-      }
-
       // Normal Cluster Pin (stacked cat photo miniature markers)
-      const clusterIcon = createStackedClusterIcon(group);
+      const isGroupActive = activeClusterGroup?.id === group.id;
+      const clusterIcon = createStackedClusterIcon(group, isGroupActive);
 
       const clusterMarker = L.marker(group.centerLatLng, {
         icon: clusterIcon,
         title: `${group.markers.length} Kucing di area ini`,
-        zIndexOffset: 800,
+        zIndexOffset: isGroupActive ? 1600 : 800,
       });
 
       clusterMarker.on('click', (e) => {
@@ -538,10 +506,20 @@ export const MapPage: React.FC = () => {
           }
         }
 
-        // Jika koordinat sama atau peta sudah mencapai tingkat zoom maksimum yang sesuai, buka daftar
-        setSpiderfiedGroupId(group.id);
-        setAreaCatListGroup(group);
+        // Toggle Popover Card / Floating List (tutup-buka jika preview dipencet lagi)
+        if (activeClusterGroup?.id === group.id && !isClosingPopover) {
+          closeClusterPopover();
+          return;
+        }
+
+        if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+        setIsClosingPopover(false);
+        setActiveClusterGroup(group);
+        setActiveCardIndex(0);
         setSelectedMarker(null);
+
+        const pt = map.latLngToContainerPoint(group.centerLatLng);
+        setPopoverPos({ x: pt.x, y: pt.y });
         map.panTo(group.centerLatLng, { animate: true });
       });
 
@@ -563,7 +541,7 @@ export const MapPage: React.FC = () => {
         }
       }
     }
-  }, [markersData, mapVersion, spiderfiedGroupId, selectedMarker?.sightingId]);
+  }, [markersData, mapVersion, activeClusterGroup?.id, isClosingPopover, selectedMarker?.sightingId, closeClusterPopover]);
 
   // 4. Update visual selection & z-index when selectedMarker changes
   useEffect(() => {
@@ -944,92 +922,185 @@ export const MapPage: React.FC = () => {
         )}
       </div>
 
-      {/* Area Cat List Bottom Sheet / Panel */}
-      {areaCatListGroup && (
-        <div className="area-cat-list-panel" id="area-cat-list-panel">
-          <div className="area-cat-list-header">
-            <div className="area-cat-list-title">
-              <Footprints size={16} style={{ color: 'var(--color-primary)' }} />
-              <span>Kucing di sekitar sini ({areaCatListGroup.markers.length})</span>
-            </div>
-            <button
-              type="button"
-              className="btn-secondary"
-              style={{ padding: '5px', borderRadius: '50%' }}
-              onClick={() => {
-                setAreaCatListGroup(null);
-                setSpiderfiedGroupId(null);
-              }}
-              aria-label="Tutup daftar kucing"
-              id="btn-close-area-cat-list"
-            >
-              <X size={15} />
-            </button>
-          </div>
+      {/* 3D Popover Cards / Floating List for Cat Clusters */}
+      {activeClusterGroup && popoverPos && (() => {
+        const count = activeClusterGroup.markers.length;
+        const mapWidth = mapContainerRef.current?.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 360);
+        // Widths: 2 cards = ~300px, carousel = ~250px, 1 card = ~160px
+        const popoverWidth = count === 2 ? 300 : count > 2 ? 250 : 160;
+        const halfWidth = popoverWidth / 2;
+        const clampedX = Math.max(halfWidth + 12, Math.min(mapWidth - halfWidth - 12, popoverPos.x));
+        const arrowOffset = popoverPos.x - clampedX;
 
-          <div className="area-cat-list-body" id="area-cat-list-items">
-            {areaCatListGroup.markers.map((m) => {
-              const breedLabel = m.catBreed && m.catBreed.trim() && m.catBreed.toLowerCase() !== 'unknown' && m.catBreed.toLowerCase() !== 'not sure yet' ? formatBreedLabel(m.catBreed) : null;
-              const displayBreed = breedLabel && breedLabel !== 'Belum tahu pasti' ? breedLabel : null;
+        const handlePrev = (e: React.MouseEvent) => {
+          e.stopPropagation();
+          setActiveCardIndex((prev) => (prev > 0 ? prev - 1 : count - 1));
+        };
 
-              return (
-                <div
-                  key={m.sightingId}
-                  className="area-cat-item-card"
-                  onClick={() => {
-                    setSelectedMarker(m);
-                    setAreaCatListGroup(null);
-                  }}
-                  id={`area-cat-item-${m.sightingId}`}
-                >
-                  <div className="area-cat-thumb">
-                    <CatPhotoImg
-                      src={m.photoUrl}
-                      alt={m.catName}
-                      mode="circle"
-                      badgeId={m.badgeRing}
-                      crop={{
-                        focalX: m.focalX ?? 0.5,
-                        focalY: m.focalY ?? 0.5,
-                        zoom: m.zoom ?? 1.0,
-                      }}
-                    />
-                  </div>
+        const handleNext = (e: React.MouseEvent) => {
+          e.stopPropagation();
+          setActiveCardIndex((prev) => (prev < count - 1 ? prev + 1 : 0));
+        };
 
-                  <div className="area-cat-info">
-                    <div className="area-cat-name">{m.catName}</div>
-                    {displayBreed && (
-                      <div className="area-cat-breed-line">
-                        <span>{displayBreed}</span>
+        return (
+          <div
+            className={`cat-cluster-popover-root${isClosingPopover ? ' cat-cluster-popover-root--closing' : ''}`}
+            id="cat-cluster-popover-root"
+            style={{
+              left: `${clampedX}px`,
+              top: `${popoverPos.y - 70}px`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Popover Body */}
+            {count === 2 ? (
+              /* TWO CARDS SIDE-BY-SIDE: KANAN & KIRI dengan 3D Perspective */
+              <div className="cat-popover-two-cards-grid">
+                {activeClusterGroup.markers.map((m, idx) => {
+                  const traitLine = formatCatTraitLine(m.catBreed, m.coatColors, m.patterns);
+                  const isLeft = idx === 0;
+
+                  return (
+                    <div
+                      key={m.sightingId}
+                      className={`cat-popover-card cat-popover-card--${isLeft ? 'left' : 'right'}`}
+                      onClick={() => navigate(`/cats/${m.catId}`)}
+                      id={`popover-card-${m.catId}`}
+                    >
+                      <div className="cat-popover-card-thumb">
+                        <CatPhotoImg
+                          src={m.photoUrl}
+                          alt={m.catName}
+                          mode="square"
+                          crop={{
+                            focalX: m.focalX ?? 0.5,
+                            focalY: m.focalY ?? 0.5,
+                            zoom: m.zoom ?? 1.0,
+                          }}
+                        />
                       </div>
-                    )}
-                    {m.locationName && (
-                      <div className="area-cat-address">
-                        <MapPin size={10} style={{ flexShrink: 0 }} />
-                        <span>{m.locationName}</span>
+                      <div className="cat-popover-card-info">
+                        <div className="cat-popover-card-name">{m.catName}</div>
+                        {traitLine && <div className="cat-popover-card-trait">{traitLine}</div>}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : count > 2 ? (
+              /* 3D FLOATING CAROUSEL / COVERFLOW DECK: ANIMASI PERGANTIAN SEPERTI THREEJS */
+              <div className="cat-popover-carousel-wrapper">
+                <div className="cat-popover-3d-stage">
+                  {activeClusterGroup.markers.map((m, idx) => {
+                    const diff = idx - activeCardIndex;
+                    const isCenter = diff === 0;
+                    const isPrev = diff === -1 || (activeCardIndex === 0 && idx === count - 1);
+                    const isNext = diff === 1 || (activeCardIndex === count - 1 && idx === 0);
+                    const traitLine = formatCatTraitLine(m.catBreed, m.coatColors, m.patterns);
 
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    style={{ padding: '6px 12px', fontSize: '11.5px', width: 'auto', flexShrink: 0 }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/cats/${m.catId}`);
-                    }}
-                    id={`btn-detail-area-cat-${m.catId}`}
-                  >
-                    <span>Detail</span>
-                    <ArrowRight size={12} />
-                  </button>
+                    let slotClass = 'cat-popover-card-slot--hidden';
+                    if (isCenter) slotClass = 'cat-popover-card-slot--center';
+                    else if (isPrev) slotClass = 'cat-popover-card-slot--left';
+                    else if (isNext) slotClass = 'cat-popover-card-slot--right';
+
+                    return (
+                      <div
+                        key={m.sightingId}
+                        className={`cat-popover-card-slot ${slotClass}`}
+                        onClick={() => {
+                          if (isCenter) {
+                            navigate(`/cats/${m.catId}`);
+                          } else {
+                            setActiveCardIndex(idx);
+                          }
+                        }}
+                      >
+                        <div className="cat-popover-card cat-popover-card--carousel">
+                          <div className="cat-popover-card-thumb">
+                            <CatPhotoImg
+                              src={m.photoUrl}
+                              alt={m.catName}
+                              mode="square"
+                              crop={{
+                                focalX: m.focalX ?? 0.5,
+                                focalY: m.focalY ?? 0.5,
+                                zoom: m.zoom ?? 1.0,
+                              }}
+                            />
+                          </div>
+                          <div className="cat-popover-card-info">
+                            <div className="cat-popover-card-name">{m.catName}</div>
+                            {traitLine && <div className="cat-popover-card-trait">{traitLine}</div>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+
+                {/* Minimalist Edge Nav Arrows */}
+                <button
+                  type="button"
+                  className="cat-popover-nav-arrow cat-popover-nav-arrow--prev"
+                  onClick={handlePrev}
+                  aria-label="Kucing sebelumnya"
+                  id="btn-prev-cluster-cat"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                <button
+                  type="button"
+                  className="cat-popover-nav-arrow cat-popover-nav-arrow--next"
+                  onClick={handleNext}
+                  aria-label="Kucing berikutnya"
+                  id="btn-next-cluster-cat"
+                >
+                  <ChevronRight size={24} />
+                </button>
+              </div>
+            ) : (
+              /* SINGLE CARD FALLBACK */
+              <div className="cat-popover-single-wrapper">
+                {(() => {
+                  const m = activeClusterGroup.markers[0];
+                  const traitLine = formatCatTraitLine(m.catBreed, m.coatColors, m.patterns);
+                  return (
+                    <div
+                      className="cat-popover-card cat-popover-card--single"
+                      onClick={() => navigate(`/cats/${m.catId}`)}
+                    >
+                      <div className="cat-popover-card-thumb">
+                        <CatPhotoImg
+                          src={m.photoUrl}
+                          alt={m.catName}
+                          mode="square"
+                          crop={{
+                            focalX: m.focalX ?? 0.5,
+                            focalY: m.focalY ?? 0.5,
+                            zoom: m.zoom ?? 1.0,
+                          }}
+                        />
+                      </div>
+                      <div className="cat-popover-card-info">
+                        <div className="cat-popover-card-name">{m.catName}</div>
+                        {traitLine && <div className="cat-popover-card-trait">{traitLine}</div>}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Downward Anchor Arrow Pointer */}
+            <div
+              className="cat-cluster-popover-arrow"
+              style={{
+                left: `calc(50% + ${arrowOffset}px)`,
+              }}
+            />
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Selected Sighting Floating Preview Card */}
       {selectedMarker && (
@@ -1097,7 +1168,7 @@ export const MapPage: React.FC = () => {
       )}
 
       {/* Floating Action Button (FAB) for Quick Capture per PRD FR-01 */}
-      {!selectedMarker && !areaCatListGroup && (
+      {!selectedMarker && !activeClusterGroup && (
         <div className="fab-container">
           <button
             type="button"

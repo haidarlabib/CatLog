@@ -17,6 +17,19 @@ import type {
   FoodType,
 } from '../types';
 
+export interface CreateCatPhotoInput {
+  blob: Blob;
+  mimeType?: string;
+  isCover?: boolean;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+  zoom?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
 export interface CreateCatFullInput {
   name: string;
   breed?: string;
@@ -24,6 +37,7 @@ export interface CreateCatFullInput {
   patterns?: string[];
   badgeRing?: string;
   notes?: string;
+  photos?: CreateCatPhotoInput[];
   photoBlob?: Blob | null;
   photoMimeType?: string;
   photoWidth?: number | null;
@@ -127,10 +141,46 @@ export class CatService {
             notes: input.notes,
           });
 
-          // 2. Save Photo if provided
-          let savedPhoto: CatPhoto | null = null;
-          if (input.photoBlob) {
-            savedPhoto = await this.photoRepo.save({
+          // 2. Save Photos if provided
+          const savedPhotos: CatPhoto[] = [];
+          let savedCoverPhoto: CatPhoto | null = null;
+
+          if (input.photos && input.photos.length > 0) {
+            const hasCover = input.photos.some((p) => p.isCover);
+            for (let i = 0; i < input.photos.length; i++) {
+              const p = input.photos[i];
+              const isCover = hasCover ? Boolean(p.isCover) : i === 0;
+
+              const photo = await this.photoRepo.save({
+                catId: cat.id,
+                blob: p.blob,
+                mimeType: p.mimeType || p.blob.type || 'image/jpeg',
+                width: p.width,
+                height: p.height,
+                focalX: isCover ? (p.focalX ?? 0.5) : 0.5,
+                focalY: isCover ? (p.focalY ?? 0.5) : 0.5,
+                zoom: isCover ? (p.zoom ?? 1.0) : 1.0,
+                latitude: p.latitude,
+                longitude: p.longitude,
+              });
+
+              savedPhotos.push(photo);
+              if (isCover) {
+                savedCoverPhoto = photo;
+              }
+            }
+
+            if (!savedCoverPhoto && savedPhotos.length > 0) {
+              savedCoverPhoto = savedPhotos[0];
+            }
+
+            if (savedCoverPhoto) {
+              cat = await this.catRepo.update(cat.id, {
+                coverPhotoId: savedCoverPhoto.id,
+              });
+            }
+          } else if (input.photoBlob) {
+            const photo = await this.photoRepo.save({
               catId: cat.id,
               blob: input.photoBlob,
               mimeType: input.photoMimeType || 'image/jpeg',
@@ -143,16 +193,19 @@ export class CatService {
               longitude: input.photoLongitude,
             });
 
+            savedPhotos.push(photo);
+            savedCoverPhoto = photo;
+
             // Set as cover photo on cat profile
             cat = await this.catRepo.update(cat.id, {
-              coverPhotoId: savedPhoto.id,
+              coverPhotoId: savedCoverPhoto.id,
             });
           }
 
           // 3. Create First Sighting
           const sighting = await this.sightingRepo.create({
             catId: cat.id,
-            photoId: savedPhoto ? savedPhoto.id : null,
+            photoId: savedCoverPhoto ? savedCoverPhoto.id : null,
             latitude: input.latitude,
             longitude: input.longitude,
             locationName: input.locationName,
@@ -160,10 +213,10 @@ export class CatService {
             spottedAt: input.spottedAt,
           });
 
-          // Link sightingId to photo if photo was saved
-          if (savedPhoto) {
-            await this.db.photos.update(savedPhoto.id, { sightingId: sighting.id });
-            savedPhoto.sightingId = sighting.id;
+          // Link sightingId to all saved photos
+          for (const photo of savedPhotos) {
+            await this.db.photos.update(photo.id, { sightingId: sighting.id });
+            photo.sightingId = sighting.id;
           }
 
           // 4. Record Feeding Log if user fed the cat
@@ -181,7 +234,7 @@ export class CatService {
           return {
             cat,
             sighting,
-            photo: savedPhoto,
+            photo: savedCoverPhoto,
             feedingLog: savedFeeding,
           };
         }
@@ -352,6 +405,13 @@ export class CatService {
       if (err instanceof ValidationError || err instanceof NotFoundError) throw err;
       throw new DatabaseError(`Failed to update cat profile "${catId}".`, err);
     }
+  }
+
+  /**
+   * Get all photos for a cat, ordered by createdAt descending
+   */
+  async getCatPhotos(catId: string): Promise<CatPhoto[]> {
+    return await this.photoRepo.getByCatId(catId);
   }
 
   /**
