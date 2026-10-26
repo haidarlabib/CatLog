@@ -256,17 +256,17 @@ export const OyenHeaderMascot: React.FC = () => {
     basecampRestDuration: 2.2,
     jumpStartX: 0,
     jumpStartY: 0,
-    jumpStartSize: 50,
+    jumpStartSize: 60,
     // Guest runner (join-run) state
     guestTourState: 'BASECAMP_REST' as MascotAnimState,
     guestTimer: 0,
     guestClock: 0,
     guestJumpStartX: 0,
     guestJumpStartY: 0,
-    guestJumpStartSize: 50,
+    guestJumpStartSize: 60,
     stageWidth: 360,
     stageHeight: 62,
-    runQuadSize: 50,
+    runQuadSize: 60,
     targets: null as HeaderMascotTargets | null,
     initializedLayout: false,
     members: {
@@ -276,7 +276,7 @@ export const OyenHeaderMascot: React.FC = () => {
         x: 0,
         y: 0,
         z: 0.01,
-        quadSize: 28,
+        quadSize: 34,
         facing: 1,
         activeFrame: MASCOT_CHARACTER_CONFIGS.oyen.sitFrames[0],
         currentAtlasIdx: -1,
@@ -292,7 +292,7 @@ export const OyenHeaderMascot: React.FC = () => {
         interactTimer: 0,
         interactBaseX: 0,
         interactBaseY: 0,
-        interactBaseSize: 28,
+        interactBaseSize: 34,
         interactReactionFrame: MASCOT_CHARACTER_CONFIGS.oyen.interactReactionFrame,
       },
       mujaer: {
@@ -301,7 +301,7 @@ export const OyenHeaderMascot: React.FC = () => {
         x: 0,
         y: 0,
         z: -0.02,
-        quadSize: 28,
+        quadSize: 34,
         facing: 1,
         activeFrame: MASCOT_CHARACTER_CONFIGS.mujaer.sitFrames[0],
         currentAtlasIdx: -1,
@@ -317,7 +317,7 @@ export const OyenHeaderMascot: React.FC = () => {
         interactTimer: 0,
         interactBaseX: 0,
         interactBaseY: 0,
-        interactBaseSize: 28,
+        interactBaseSize: 34,
         interactReactionFrame: MASCOT_CHARACTER_CONFIGS.mujaer.interactReactionFrame,
       },
       putih: {
@@ -326,7 +326,7 @@ export const OyenHeaderMascot: React.FC = () => {
         x: 0,
         y: 0,
         z: 0.02,
-        quadSize: 28,
+        quadSize: 34,
         facing: 1,
         activeFrame: MASCOT_CHARACTER_CONFIGS.putih.sitFrames[0],
         currentAtlasIdx: -1,
@@ -342,7 +342,7 @@ export const OyenHeaderMascot: React.FC = () => {
         interactTimer: 0,
         interactBaseX: 0,
         interactBaseY: 0,
-        interactBaseSize: 28,
+        interactBaseSize: 34,
         interactReactionFrame: MASCOT_CHARACTER_CONFIGS.putih.interactReactionFrame,
       },
     } as Record<MascotCharacterId, MascotMemberRuntime>,
@@ -353,6 +353,7 @@ export const OyenHeaderMascot: React.FC = () => {
     const stageEl = stageRef.current;
     const canvasEl = canvasRef.current;
     if (!stageEl || !canvasEl) return;
+    const basecampClicks = pendingBasecampClicks.current;
 
     let renderer: WebGLRenderer;
     try {
@@ -1325,7 +1326,6 @@ export const OyenHeaderMascot: React.FC = () => {
       canvasEl.removeEventListener('webglcontextlost', handleContextLost);
 
       // Clean up all pending basecamp single-click timers
-      const basecampClicks = pendingBasecampClicks.current;
       for (const charId of MASCOT_TURN_ORDER) {
         const t = basecampClicks[charId];
         if (t) clearTimeout(t);

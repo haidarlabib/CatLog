@@ -367,8 +367,8 @@ export function evaluateBasecampBreathing(
 }
 
 export function getResponsiveQuadSize(stageWidth: number): number {
-  if (stageWidth >= 600) return 52;
-  return Math.max(44, Math.min(49, Math.round(stageWidth * 0.12)));
+  if (stageWidth >= 600) return 62;
+  return Math.max(53, Math.min(59, Math.round(stageWidth * 0.144)));
 }
 
 export function getAtlasUvOffset(atlasIndex: number): { u: number; v: number; repeat: number } {
@@ -467,7 +467,7 @@ export function computeHeaderMascotTargets(
 
   const wmLetterTopDomY = Math.max(26, Math.min(stageHeight - 20, wmRect.top + wmRect.height * 0.4));
   const wmAvailHeight = Math.max(21, wmLetterTopDomY - 5.5);
-  const wordmarkQuadSize = Math.max(33, Math.min(39, wmAvailHeight / 0.6484375));
+  const wordmarkQuadSize = Math.max(40, Math.min(47, (wmAvailHeight / 0.6484375) * 1.2));
   const wmDomCenterY = wmLetterTopDomY - (0.5 - footRatioFromBottom) * wordmarkQuadSize;
   const wordmarkPlayQuadY = stageHeight * 0.5 - wmDomCenterY;
   const wordmarkSafeTopHeightPx = Math.max(16, Math.round(wmRect.top + 4));
@@ -489,23 +489,23 @@ export function computeHeaderMascotTargets(
   const badgeTopDomY = Math.max(20, Math.min(stageHeight - 18, bRect.top));
   const badgePawsDomY = badgeTopDomY + 5;
   const badgeAvailHeight = Math.max(21, badgePawsDomY - 6.5);
-  const badgeQuadSize = Math.max(33, Math.min(40, badgeAvailHeight / 0.6484375));
+  const badgeQuadSize = Math.max(40, Math.min(48, (badgeAvailHeight / 0.6484375) * 1.2));
   const badgeDomCenterY = badgePawsDomY - (0.5 - footRatioFromBottom) * badgeQuadSize;
   const badgePerchQuadY = stageHeight * 0.5 - badgeDomCenterY;
 
   const isMobile = stageWidth < 600;
   const maxSafeBasecampQuad = Math.floor((badgeTopDomY + 3.8) / (1 - footRatioFromBottom) - 2);
   const basecampQuadSize = isMobile
-    ? Math.max(22, Math.min(26, maxSafeBasecampQuad))
-    : Math.max(25, Math.min(30, maxSafeBasecampQuad));
+    ? Math.max(26, Math.min(31, maxSafeBasecampQuad))
+    : Math.max(30, Math.min(36, maxSafeBasecampQuad));
 
   const basecampPawsDomY = badgeTopDomY + 4;
   const slotDomCenterY = basecampPawsDomY - (0.5 - footRatioFromBottom) * basecampQuadSize;
   const slotBaseWorldY = stageHeight * 0.5 - slotDomCenterY;
 
-  const slotSpacing = isMobile ? 16.5 : 23.0;
-  const basecampHitboxW = Math.max(20, Math.round(basecampQuadSize * 0.88));
-  const basecampHitboxH = Math.max(18, Math.round(badgeTopDomY + 2));
+  const slotSpacing = isMobile ? 18.5 : 26.0;
+  const basecampHitboxW = Math.max(24, Math.round(basecampQuadSize * 0.88));
+  const basecampHitboxH = Math.max(20, Math.round(badgeTopDomY + 2));
 
   const basecampSlots: Record<MascotCharacterId, BasecampSlot> = {
     oyen: {
@@ -698,14 +698,14 @@ export function computeRunnerHitbox(
     state === 'GUEST_PLAY'
   ) {
     const domX = worldX + stageWidth * 0.5;
-    const desiredLeft = Math.round(domX - 22);
-    const desiredRight = desiredLeft + 44;
+    const desiredLeft = Math.round(domX - 26);
+    const desiredRight = desiredLeft + 52;
     const clampedLeft = Math.max(targets.corridorLeftDomX, desiredLeft);
     const clampedRight = Math.min(targets.corridorRightDomX, desiredRight);
     const widthPx = clampedRight - clampedLeft;
 
-    if (widthPx >= 22) {
-      const heightPx = Math.min(44, Math.max(28, stageHeight - 10));
+    if (widthPx >= 24) {
+      const heightPx = Math.min(50, Math.max(30, stageHeight - 8));
       return {
         leftPx: clampedLeft,
         topPx: Math.max(4, stageHeight - heightPx - 4),
