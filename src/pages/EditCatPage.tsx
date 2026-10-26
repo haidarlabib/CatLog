@@ -406,15 +406,17 @@ export const EditCatPage: React.FC = () => {
       <div className="page-header-row">
         <button
           type="button"
-          className="btn-secondary"
+          className="detail-nav-pill"
           onClick={() => navigate(`/cats/${catId}`)}
-          style={{ padding: '6px 12px' }}
         >
           <ArrowLeft size={16} />
           <span>Batal</span>
         </button>
-        <h1 className="page-title" style={{ fontSize: 'var(--font-size-lg)' }}>Edit Profil Kucing</h1>
-        <div style={{ width: 60 }} />
+        <div style={{ textAlign: 'center' }}>
+          <span className="eyebrow-tag" style={{ display: 'block', marginBottom: '2px' }}>PERBARUI PROFIL</span>
+          <h1 className="page-title" style={{ fontSize: 'var(--font-size-lg)' }}>Edit Profil Kucing</h1>
+        </div>
+        <div style={{ width: 64 }} />
       </div>
 
       {errorMsg && (
@@ -589,6 +591,20 @@ export const EditCatPage: React.FC = () => {
             photoId={!newPreviewUrl ? cat?.coverPhotoId : undefined}
             crop={newPreviewUrl ? newPhotoCrop : undefined}
           />
+
+          {badgeRing && (() => {
+            const activeBadge = resolveBadge(badgeRing);
+            return (
+              <div className={`selected-badge-feedback-card badge-pastel-${activeBadge.id}`}>
+                <div className="selected-badge-feedback-head">
+                  <strong>{activeBadge.nickname}</strong>
+                  <span aria-hidden="true">·</span>
+                  <span>{activeBadge.epithet}</span>
+                </div>
+                <p className="selected-badge-feedback-desc">{activeBadge.description}</p>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Warna & Pola Bulu (Opsional - Collapsible) */}
@@ -804,12 +820,14 @@ export const EditCatPage: React.FC = () => {
         {/* Tombol Simpan */}
         <button
           type="submit"
-          className="btn-primary"
+          className="btn-primary btn-island"
           disabled={isSubmitting}
           id="btn-save-edit"
         >
-          <Save size={18} />
           <span>{isSubmitting ? 'Menyimpan Perubahan...' : 'Simpan Perubahan'}</span>
+          <span className="btn-icon-disk" aria-hidden="true">
+            <Save size={15} />
+          </span>
         </button>
       </form>
 

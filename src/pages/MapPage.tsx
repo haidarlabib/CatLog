@@ -1103,69 +1103,76 @@ export const MapPage: React.FC = () => {
       })()}
 
       {/* Selected Sighting Floating Preview Card */}
-      {selectedMarker && (
-        <div className="map-sighting-card-wrapper" id="map-preview-card-wrapper">
-          <div className="map-sighting-card" id="map-sighting-card">
-            <div className="map-card-thumb">
-              <CatPhotoImg
-                src={selectedMarker.photoUrl}
-                alt={selectedMarker.catName}
-                mode="circle"
-                badgeId={selectedMarker.badgeRing}
-                crop={{
-                  focalX: selectedMarker.focalX ?? 0.5,
-                  focalY: selectedMarker.focalY ?? 0.5,
-                  zoom: selectedMarker.zoom ?? 1.0,
-                }}
-              />
-            </div>
+      {selectedMarker && (() => {
+        const selectedBadge = resolveBadge(selectedMarker.badgeRing);
+        const traitLine = formatCatTraitLine(
+          selectedMarker.catBreed,
+          selectedMarker.coatColors,
+          selectedMarker.patterns
+        );
 
-            <div className="map-card-info">
-              <div className="map-card-name">{selectedMarker.catName}</div>
-              {(() => {
-                const traitLine = formatCatTraitLine(
-                  selectedMarker.catBreed,
-                  selectedMarker.coatColors,
-                  selectedMarker.patterns
-                );
-                return traitLine ? (
+        return (
+          <div className="map-sighting-card-wrapper" id="map-preview-card-wrapper">
+            <div className="map-sighting-card" id="map-sighting-card">
+              <div className="map-card-thumb">
+                <CatPhotoImg
+                  src={selectedMarker.photoUrl}
+                  alt={selectedMarker.catName}
+                  mode="circle"
+                  badgeId={selectedMarker.badgeRing}
+                  crop={{
+                    focalX: selectedMarker.focalX ?? 0.5,
+                    focalY: selectedMarker.focalY ?? 0.5,
+                    zoom: selectedMarker.zoom ?? 1.0,
+                  }}
+                />
+              </div>
+
+              <div className="map-card-info">
+                <div className="map-card-title-row">
+                  <div className="map-card-name">{selectedMarker.catName}</div>
+                  <span className={`map-card-badge-pill badge-pastel-${selectedBadge.id}`}>
+                    {selectedBadge.nickname}
+                  </span>
+                </div>
+                {traitLine && (
                   <div className="map-card-meta map-card-traits">
                     <span>{traitLine}</span>
                   </div>
-                ) : null;
-              })()}
-              {selectedMarker.locationName && (
-                <div className="map-card-meta">
-                  <MapPin size={11} />
-                  <span>{selectedMarker.locationName}</span>
-                </div>
-              )}
-            </div>
+                )}
+                {selectedMarker.locationName && (
+                  <div className="map-card-meta">
+                    <MapPin size={11} />
+                    <span>{selectedMarker.locationName}</span>
+                  </div>
+                )}
+              </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <button
-                type="button"
-                className="btn-primary"
-                style={{ padding: '8px 12px', fontSize: 'var(--font-size-xs)', width: 'auto' }}
-                onClick={() => navigate(`/cats/${selectedMarker.catId}`)}
-                id="btn-view-cat-from-map"
-              >
-                <span>Detail</span>
-                <ArrowRight size={13} />
-              </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                style={{ padding: '6px', borderRadius: '50%' }}
-                onClick={() => setSelectedMarker(null)}
-                aria-label="Tutup pratinjau"
-              >
-                <X size={15} />
-              </button>
+              <div className="map-card-actions">
+                <button
+                  type="button"
+                  className="btn-primary btn-island map-detail-cta"
+                  onClick={() => navigate(`/cats/${selectedMarker.catId}`)}
+                  id="btn-view-cat-from-map"
+                >
+                  <span>Detail</span>
+                  <span className="btn-icon-disk" aria-hidden="true">
+                    <ArrowRight size={13} />
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="map-card-close-btn"
+                  onClick={() => setSelectedMarker(null)}
+                  aria-label="Tutup pratinjau"
+                >
+                  <X size={15} />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Floating Action Button (FAB) for Quick Capture per PRD FR-01 */}
       {!selectedMarker && !activeClusterGroup && (

@@ -1,9 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Search, X, MapPin, MoreHorizontal } from 'lucide-react';
+import { Search, X, MapPin, ArrowUpRight } from 'lucide-react';
 import { catRepository } from '../db';
 import { CatPhotoImg } from '../components/CatPhotoImg';
-import { formatBreedLabel, formatAppearanceLabel } from '../config/catAppearance';
+import {
+  CHARACTER_BADGES,
+  formatBreedLabel,
+  formatAppearanceLabel,
+  resolveBadge,
+} from '../config/catAppearance';
 import { OyenEmptyState } from '../components/OyenEmptyState';
 import type { CatWithLatestSighting } from '../types';
 
@@ -11,6 +16,7 @@ export const CatalogPage: React.FC = () => {
   const navigate = useNavigate();
   const [cats, setCats] = useState<CatWithLatestSighting[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeBadgeFilter, setActiveBadgeFilter] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -19,12 +25,11 @@ export const CatalogPage: React.FC = () => {
     setErrorMsg(null);
 
     try {
-      // If query is provided, use repo search, otherwise fetch all
-      const rawCats = query.trim().length > 0
-        ? await catRepository.search(query)
-        : await catRepository.getAll();
+      const rawCats =
+        query.trim().length > 0
+          ? await catRepository.search(query)
+          : await catRepository.getAll();
 
-      // Enrich with latest sighting info
       const enriched: CatWithLatestSighting[] = await Promise.all(
         rawCats.map(async (c) => {
           const detail = await catRepository.getCatWithLatestSighting(c.id);
@@ -44,56 +49,95 @@ export const CatalogPage: React.FC = () => {
     loadCats(searchQuery);
   }, [searchQuery, loadCats]);
 
+  const filteredCats = useMemo(() => {
+    if (activeBadgeFilter === 'all') return cats;
+    return cats.filter((c) => resolveBadge(c.badgeRing).id === activeBadgeFilter);
+  }, [cats, activeBadgeFilter]);
+
   return (
     <div className="page-container catalog-page-container" id="catalog-page">
-      {/* Title */}
-      <div className="page-header-row">
-        <div>
-          <h1 className="page-title">Katalog Kucing</h1>
-          <span className="page-subtitle">Koleksi kucing yang kamu temui</span>
+      <h1 className="sr-only">Katalog Kucing</h1>
+
+      {/* Double-Bezel Search Input Bar */}
+      <div className="search-bezel-shell">
+        <div className="search-bar-wrapper">
+          <Search className="search-icon" size={17} aria-hidden="true" />
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Cari kucing berdasarkan nama, ras, atau warna..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Cari kucing"
+            id="catalog-search-input"
+          />
+          {searchQuery.trim().length > 0 && (
+            <button
+              type="button"
+              className="search-clear-btn"
+              onClick={() => setSearchQuery('')}
+              aria-label="Hapus pencarian"
+            >
+              <X size={15} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Search Input Bar */}
-      <div className="search-bar-wrapper">
-        <Search className="search-icon" size={18} aria-hidden="true" />
-        <input
-          type="text"
-          className="search-input"
-          placeholder="Cari kucing berdasarkan nama, ras, atau warna..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          aria-label="Cari kucing"
-          id="catalog-search-input"
-        />
-        {searchQuery.trim().length > 0 && (
+      {/* Personality Archetype Filter Strip (shown when cats exist) */}
+      {!isLoading && !errorMsg && cats.length > 0 && (
+        <div className="catalog-filter-strip" role="tablist" aria-label="Filter kepribadian kucing">
           <button
             type="button"
-            className="search-clear-btn"
-            onClick={() => setSearchQuery('')}
-            aria-label="Hapus pencarian"
+            role="tab"
+            aria-selected={activeBadgeFilter === 'all'}
+            className={`catalog-filter-chip ${activeBadgeFilter === 'all' ? 'active' : ''}`}
+            onClick={() => setActiveBadgeFilter('all')}
           >
-            <X size={16} />
+            <span>Semua</span>
+            <span className="filter-chip-count tabular-nums">{cats.length}</span>
           </button>
-        )}
-      </div>
+          {CHARACTER_BADGES.map((b) => {
+            const countForBadge = cats.filter(
+              (c) => resolveBadge(c.badgeRing).id === b.id
+            ).length;
+            if (countForBadge === 0 && activeBadgeFilter !== b.id) return null;
+            const isActive = activeBadgeFilter === b.id;
+            return (
+              <button
+                key={b.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                className={`catalog-filter-chip badge-pastel-${b.id} ${isActive ? 'active' : ''}`}
+                onClick={() => setActiveBadgeFilter(isActive ? 'all' : b.id)}
+              >
+                <span
+                  className="filter-chip-dot"
+                  style={{ backgroundColor: b.hex }}
+                  aria-hidden="true"
+                />
+                <span>{b.nickname}</span>
+                <span className="filter-chip-count tabular-nums">{countForBadge}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      {/* Loading State */}
+      {/* Skeleton Shimmer Loading State */}
       {isLoading && (
-        <div style={{ textAlign: 'center', padding: 'var(--space-8) 0', color: 'var(--color-text-muted)' }}>
-          <div
-            className="spin"
-            style={{
-              width: 28,
-              height: 28,
-              border: '3px solid var(--color-border)',
-              borderTopColor: 'var(--color-primary)',
-              borderRadius: '50%',
-              margin: '0 auto var(--space-3)',
-            }}
-            role="status"
-            aria-label="Memuat katalog"
-          />
+        <div className="cat-grid" role="status" aria-label="Memuat katalog">
+          {[0, 1, 2, 3].map((idx) => (
+            <div key={idx} className="cat-card cat-card--skeleton" aria-hidden="true">
+              <div className="skeleton-shimmer cat-card-media" />
+              <div className="cat-card-body">
+                <div className="skeleton-shimmer skeleton-line skeleton-line--title" />
+                <div className="skeleton-shimmer skeleton-line skeleton-line--sub" />
+                <div className="skeleton-shimmer skeleton-line skeleton-line--meta" />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -111,19 +155,24 @@ export const CatalogPage: React.FC = () => {
       {/* Content Grid or Empty State */}
       {!isLoading && !errorMsg && (
         <>
-          {cats.length > 0 ? (
+          {filteredCats.length > 0 ? (
             <div className="cat-grid" id="catalog-grid">
-              {cats.map((cat) => {
-                const breedText = cat.breed && cat.breed !== 'unknown' ? formatBreedLabel(cat.breed) : null;
-                const coatText = cat.coatColors && cat.coatColors.length > 0 
-                  ? cat.coatColors.map(formatAppearanceLabel).join(' ') 
-                  : null;
+              {filteredCats.map((cat, idx) => {
+                const breedText =
+                  cat.breed && cat.breed !== 'unknown' ? formatBreedLabel(cat.breed) : null;
+                const coatText =
+                  cat.coatColors && cat.coatColors.length > 0
+                    ? cat.coatColors.map(formatAppearanceLabel).join(', ')
+                    : null;
+                const badge = resolveBadge(cat.badgeRing);
+                const latestLoc = cat.latestSighting?.locationName;
 
                 return (
                   <Link
                     key={cat.id}
                     to={`/cats/${cat.id}`}
-                    className="cat-card"
+                    className="cat-card animate-stagger-in"
+                    style={{ '--stagger': Math.min(idx, 10) } as React.CSSProperties}
                     id={`cat-card-${cat.id}`}
                   >
                     <div className="cat-card-media">
@@ -132,41 +181,60 @@ export const CatalogPage: React.FC = () => {
                         alt={`Foto ${cat.name}`}
                         mode="square"
                       />
+                      <span
+                        className="cat-card-badge-emblem"
+                        title={`${badge.nickname} — ${badge.epithet}`}
+                      >
+                        <img src={badge.assetPath} alt="" aria-hidden="true" />
+                      </span>
                     </div>
+
                     <div className="cat-card-body">
                       <div className="cat-card-header-row">
                         <div className="cat-card-title">{cat.name}</div>
                         <span className="cat-card-more-btn" aria-hidden="true">
-                          <MoreHorizontal size={14} />
+                          <ArrowUpRight size={13} />
                         </span>
                       </div>
-                      
+
                       <div className="cat-card-subtitle">
+                        <span className={`cat-card-personality-pill badge-pastel-${badge.id}`}>
+                          {badge.epithet}
+                        </span>
                         <span className="cat-card-breed-tag">{breedText || 'Domestik'}</span>
                         {coatText && <span className="cat-card-coat-tag">{coatText}</span>}
                       </div>
 
                       <div className="cat-card-meta">
                         <MapPin size={12} style={{ flexShrink: 0 }} />
-                        <span>{cat.sightingsCount || 1} pertemuan</span>
+                        <span className="cat-card-meta-text tabular-nums">
+                          {latestLoc
+                            ? `${latestLoc} · ${cat.sightingsCount || 1}×`
+                            : `${cat.sightingsCount || 1} pertemuan`}
+                        </span>
                       </div>
                     </div>
                   </Link>
                 );
               })}
             </div>
-          ) : searchQuery.trim().length > 0 ? (
+          ) : searchQuery.trim().length > 0 || activeBadgeFilter !== 'all' ? (
             <div className="empty-state-card" style={{ margin: 'var(--space-6) auto' }}>
               <h2 className="empty-state-title">Tidak Ada Kucing yang Cocok</h2>
               <p className="empty-state-desc">
-                Tidak ditemukan kucing yang sesuai dengan &ldquo;{searchQuery}&rdquo;.
+                {searchQuery.trim().length > 0
+                  ? `Tidak ditemukan kucing yang sesuai dengan "${searchQuery}".`
+                  : 'Belum ada kucing dengan badge karakter tersebut.'}
               </p>
               <button
                 type="button"
                 className="btn-secondary"
-                onClick={() => setSearchQuery('')}
+                onClick={() => {
+                  setSearchQuery('');
+                  setActiveBadgeFilter('all');
+                }}
               >
-                Hapus Pencarian
+                Reset Filter
               </button>
             </div>
           ) : (

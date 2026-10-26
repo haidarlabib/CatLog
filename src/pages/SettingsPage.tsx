@@ -218,11 +218,7 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="page-container settings-page" id="settings-page" style={{ paddingBottom: 'calc(var(--bottom-nav-height) + 32px)' }}>
-      {/* Editorial Header */}
-      <div className="settings-header-wrap">
-        <h1 className="settings-title">Pengaturan</h1>
-        <p className="settings-subtitle">Preferensi profil &amp; manajemen cadangan data</p>
-      </div>
+      <h1 className="sr-only">Pengaturan</h1>
 
       {/* Floating / Inline Feedback Notice */}
       {feedbackMsg && (
@@ -262,9 +258,7 @@ export const SettingsPage: React.FC = () => {
       />
 
       {/* Group 1: Profil Pengguna */}
-      <section className="settings-section" aria-labelledby="heading-profile">
-        <div className="settings-section-title" id="heading-profile">Profil Pengguna</div>
-        
+      <section className="settings-section" aria-label="Profil Pengguna">
         <div className="settings-card profile-card">
           {/* Top Avatar + Nickname Hero */}
           <div className="profile-card-top">
@@ -391,8 +385,7 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* Group 2: Pengaturan Peta */}
-      <section className="settings-section" aria-labelledby="heading-map">
-        <div className="settings-section-title" id="heading-map">Pengaturan Peta</div>
+      <section className="settings-section" aria-label="Pengaturan Peta">
         <div className="settings-card">
           <div className="settings-row" style={{ padding: '12px 14px' }}>
             <div className="settings-row-left">
@@ -418,25 +411,37 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* Group 3: Data & Penyimpanan */}
-      <section className="settings-section" aria-labelledby="heading-data">
-        <div className="settings-section-title" id="heading-data">Data &amp; Penyimpanan</div>
+      <section className="settings-section" aria-label="Data &amp; Penyimpanan">
         <div className="settings-card" style={{ padding: '4px 0' }}>
           {/* Storage Quota Usage */}
-          <div className="settings-row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-subtle)' }}>
-            <div className="settings-row-left">
+          <div className="settings-row settings-row--storage" style={{ padding: '14px 16px', borderBottom: '1px solid var(--color-border-subtle)' }}>
+            <div className="settings-row-left" style={{ flex: 1 }}>
               <div className="settings-icon-box">
                 <HardDrive size={17} />
               </div>
-              <div className="settings-text-col">
-                <span className="settings-row-label">Penggunaan Penyimpanan</span>
-                <span className="settings-row-desc">Kapasitas data lokal terpakai</span>
+              <div className="settings-text-col" style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px' }}>
+                  <span className="settings-row-label">Penggunaan Penyimpanan</span>
+                  <span className="tabular-nums" style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-primary)' }}>
+                    {storageEstimate ? formatBytes(storageEstimate.usage) : '0 B'}
+                  </span>
+                </div>
+                <span className="settings-row-desc">
+                  {storageEstimate && storageEstimate.quota > 0
+                    ? `Kapasitas lokal tersedia hingga ${formatBytes(storageEstimate.quota)}`
+                    : 'Kapasitas data lokal terpakai di perangkat ini'}
+                </span>
+                {storageEstimate && storageEstimate.quota > 0 && (
+                  <div className="storage-meter-track" aria-hidden="true">
+                    <div
+                      className="storage-meter-fill"
+                      style={{
+                        width: `${Math.min(100, Math.max(2, (storageEstimate.usage / storageEstimate.quota) * 100)).toFixed(1)}%`,
+                      }}
+                    />
+                  </div>
+                )}
               </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--color-primary)' }}>
-                {storageEstimate ? formatBytes(storageEstimate.usage) : '0 B'}
-              </span>
-              <ChevronRight size={16} className="settings-chevron" />
             </div>
           </div>
 

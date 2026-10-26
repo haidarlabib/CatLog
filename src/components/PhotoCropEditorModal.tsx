@@ -18,7 +18,7 @@ interface PhotoCropEditorModalProps {
 export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
   imageUrl,
   initialCrop,
-  badgeRingColor = '#D96B43',
+  badgeRingColor = '#EAB308',
   badgeId,
   saveButtonText = 'Simpan Foto',
   cancelButtonText = 'Batal',
@@ -206,7 +206,7 @@ export const PhotoCropEditorModal: React.FC<PhotoCropEditorModalProps> = ({
                   width: '82%',
                   height: '82%',
                   borderRadius: '50%',
-                  border: '2px dashed #D96B43',
+                  border: '2px dashed #E8D5B0',
                   filter: 'drop-shadow(0 0 3px rgba(0, 0, 0, 0.85))',
                   pointerEvents: 'none',
                 }}

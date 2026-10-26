@@ -425,20 +425,22 @@ export const AddCatPage: React.FC = () => {
       <div className="page-header-row">
         <button
           type="button"
-          className="btn-secondary"
+          className="detail-nav-pill"
           onClick={() => {
             catDraftStore.clearAllDrafts();
             navigate(-1);
           }}
           aria-label="Kembali"
-          style={{ padding: '6px 12px' }}
           id="btn-add-cat-back"
         >
           <ArrowLeft size={16} />
           <span>Kembali</span>
         </button>
-        <h1 className="page-title" style={{ fontSize: 'var(--font-size-lg)' }}>Tambah Kucing</h1>
-        <div style={{ width: 60 }} />
+        <div style={{ textAlign: 'center' }}>
+          <span className="eyebrow-tag" style={{ display: 'block', marginBottom: '2px' }}>ENTRI BARU</span>
+          <h1 className="page-title" style={{ fontSize: 'var(--font-size-lg)' }}>Tambah Kucing</h1>
+        </div>
+        <div style={{ width: 72 }} />
       </div>
 
       {formError && (
@@ -667,6 +669,24 @@ export const AddCatPage: React.FC = () => {
             photoUrl={activeCoverPhoto?.previewUrl}
             crop={activeCoverPhoto?.crop}
           />
+
+          {badgeRing ? (() => {
+            const activeBadge = resolveBadge(badgeRing);
+            return (
+              <div className={`selected-badge-feedback-card badge-pastel-${activeBadge.id}`}>
+                <div className="selected-badge-feedback-head">
+                  <strong>{activeBadge.nickname}</strong>
+                  <span aria-hidden="true">·</span>
+                  <span>{activeBadge.epithet}</span>
+                </div>
+                <p className="selected-badge-feedback-desc">{activeBadge.description}</p>
+              </div>
+            );
+          })() : (
+            <div className="selected-badge-feedback-empty">
+              Ketuk salah satu bingkai di atas untuk menentukan karakter kucing ini.
+            </div>
+          )}
         </div>
 
         {/* E. Warna & Pola Bulu (Opsional - Collapsible) */}
@@ -884,7 +904,7 @@ export const AddCatPage: React.FC = () => {
         {/* Tombol Simpan */}
         <button
           type="submit"
-          className="btn-primary"
+          className="btn-primary btn-island"
           disabled={
             isSubmitting ||
             !name.trim() ||
@@ -895,8 +915,10 @@ export const AddCatPage: React.FC = () => {
           id="btn-save-cat"
           style={{ marginTop: 'var(--space-2)' }}
         >
-          <Save size={18} />
           <span>{isSubmitting ? 'Menyimpan Kucing...' : 'Simpan Kucing'}</span>
+          <span className="btn-icon-disk" aria-hidden="true">
+            <Save size={15} />
+          </span>
         </button>
       </form>
 

@@ -1,11 +1,23 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { Map, PawPrint, Settings } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
+  const { pathname } = useLocation();
+  const activeIdx = pathname.startsWith('/settings')
+    ? 2
+    : pathname.startsWith('/catalog') || pathname.startsWith('/cats/')
+    ? 1
+    : 0;
+
   return (
     <nav className="bottom-nav-wrapper" aria-label="Navigasi Utama">
-      <div className="bottom-nav-pill">
+      <div
+        className="bottom-nav-pill"
+        style={{ '--active-idx': activeIdx } as React.CSSProperties}
+      >
+        <span className="bottom-nav-glider" aria-hidden="true" />
+
         <NavLink
           to="/"
           end
@@ -18,7 +30,9 @@ export const BottomNav: React.FC = () => {
 
         <NavLink
           to="/catalog"
-          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+          className={({ isActive }) =>
+            `nav-item ${isActive || pathname.startsWith('/cats/') ? 'active' : ''}`
+          }
           id="nav-tab-catalog"
         >
           <PawPrint className="nav-item-icon" aria-hidden="true" />

@@ -1,7 +1,13 @@
+import React from 'react';
+import { renderToString } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ProwlLogDatabase } from '../db';
 import { CatService } from '../services/catService';
 import { BackupService } from '../services/backupService';
+import { CatCompass3D } from '../components/CatCompass3D';
+import { BottomNav } from '../components/BottomNav';
+import { OyenEmptyState } from '../components/OyenEmptyState';
 
 describe('End-to-End QA & Regression Suite (Milestone 6)', () => {
   let testDb: ProwlLogDatabase;
@@ -170,5 +176,42 @@ describe('End-to-End QA & Regression Suite (Milestone 6)', () => {
     const safeCat = await testDb.cats.toArray();
     expect(safeCat.length).toBe(1);
     expect(safeCat[0].name).toBe('Safe Keep Cat');
+  });
+
+  it('verifies redesigned CatCompass3D, fluid BottomNav glider, and kinetic OyenEmptyState CTA contracts', () => {
+    // 1. CatCompass3D renders interactive 3D canvas button safely in SSR/headless environments
+    const compassHtml = renderToString(React.createElement(CatCompass3D, { size: 60 }));
+    expect(compassHtml).toContain('id="cat-compass-3d"');
+    expect(compassHtml).toContain('cat-compass-3d-btn');
+    expect(compassHtml).toContain('<canvas');
+
+    // 2. BottomNav renders fluid spring glider and preserves all navigation tab IDs
+    const navHtml = renderToString(
+      React.createElement(
+        MemoryRouter,
+        { initialEntries: ['/catalog'] },
+        React.createElement(BottomNav)
+      )
+    );
+    expect(navHtml).toContain('bottom-nav-glider');
+    expect(navHtml).toContain('--active-idx:1');
+    expect(navHtml).toContain('id="nav-tab-map"');
+    expect(navHtml).toContain('id="nav-tab-catalog"');
+    expect(navHtml).toContain('id="nav-tab-settings"');
+
+    // 3. OyenEmptyState preserves mascot IDs and upgrades CTA to Button-in-Button (.btn-island)
+    const oyenHtml = renderToString(
+      React.createElement(OyenEmptyState, {
+        variant: 'bos',
+        title: 'Katalog masih kosong',
+        description: 'Belum ada kucing tercatat.',
+        ctaLabel: 'Tambah Kucing Pertama',
+        onCtaClick: () => {},
+      })
+    );
+    expect(oyenHtml).toContain('id="oyen-state-bos"');
+    expect(oyenHtml).toContain('id="oyen-cta-bos"');
+    expect(oyenHtml).toContain('btn-island');
+    expect(oyenHtml).toContain('btn-icon-disk');
   });
 });

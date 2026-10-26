@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowUpRight } from 'lucide-react';
 
 /**
  * Oyen mascot states for ProwlLog empty/error/loading states.
@@ -47,7 +48,7 @@ export const OyenEmptyState: React.FC<OyenEmptyStateProps> = ({
       <div className="oyen-empty-state-card">
         <img
           src={OYEN_ASSETS[variant]}
-          alt={`Oyen maskot Cuking`}
+          alt="Oyen maskot Cuking"
           className="oyen-mascot-img"
           draggable={false}
         />
@@ -58,11 +59,14 @@ export const OyenEmptyState: React.FC<OyenEmptyStateProps> = ({
         {ctaLabel && onCtaClick && (
           <button
             type="button"
-            className="btn-primary"
+            className="btn-primary btn-island"
             onClick={onCtaClick}
             id={`oyen-cta-${variant}`}
           >
             <span>{ctaLabel}</span>
+            <span className="btn-icon-disk" aria-hidden="true">
+              <ArrowUpRight size={15} />
+            </span>
           </button>
         )}
       </div>

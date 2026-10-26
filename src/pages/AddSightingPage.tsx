@@ -294,17 +294,19 @@ export const AddSightingPage: React.FC = () => {
       <div className="page-header-row">
         <button
           type="button"
-          className="btn-secondary"
+          className="detail-nav-pill"
           onClick={() => navigate(`/cats/${catId}`)}
-          style={{ padding: '6px 12px' }}
         >
           <ArrowLeft size={16} />
           <span>Kembali</span>
         </button>
-        <h1 className="page-title" style={{ fontSize: 'var(--font-size-lg)' }}>
-          Catat Pertemuan {cat ? `untuk ${cat.name}` : ''}
-        </h1>
-        <div style={{ width: 60 }} />
+        <div style={{ textAlign: 'center' }}>
+          <span className="eyebrow-tag" style={{ display: 'block', marginBottom: '2px' }}>JURNAL PERTEMUAN</span>
+          <h1 className="page-title" style={{ fontSize: 'var(--font-size-lg)' }}>
+            Catat Pertemuan {cat ? `· ${cat.name}` : ''}
+          </h1>
+        </div>
+        <div style={{ width: 72 }} />
       </div>
 
       {formError && (
@@ -612,12 +614,14 @@ export const AddSightingPage: React.FC = () => {
 
         <button
           type="submit"
-          className="btn-primary"
+          className="btn-primary btn-island"
           disabled={isSubmitting}
           id="btn-save-sighting"
         >
-          <Save size={18} />
           <span>{isSubmitting ? 'Menyimpan Pertemuan...' : 'Simpan Pertemuan'}</span>
+          <span className="btn-icon-disk" aria-hidden="true">
+            <Save size={15} />
+          </span>
         </button>
       </form>
 

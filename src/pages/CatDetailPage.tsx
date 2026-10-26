@@ -1,27 +1,31 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Edit3, 
-  Plus, 
-  Trash2, 
-  MapPin, 
-  Utensils, 
-  CheckCircle2, 
+import {
+  ArrowLeft,
+  Edit3,
+  Plus,
+  Trash2,
+  MapPin,
+  Utensils,
+  CheckCircle2,
   AlertTriangle,
   Camera,
   ChevronLeft,
   ChevronRight,
-  Star
+  Star,
 } from 'lucide-react';
-import { 
-  catRepository, 
-  sightingRepository, 
+import {
+  catRepository,
+  sightingRepository,
   feedingLogRepository,
-  photoRepository
+  photoRepository,
 } from '../db';
 import { CatPhotoImg } from '../components/CatPhotoImg';
-import { formatBreedLabel, formatAppearanceLabel, resolveBadge } from '../config/catAppearance';
+import {
+  formatBreedLabel,
+  formatAppearanceLabel,
+  resolveBadge,
+} from '../config/catAppearance';
 import { formatIndonesianDateTime } from '../utils/date';
 import { OyenEmptyState } from '../components/OyenEmptyState';
 import type { Cat, Sighting, FeedingLog, CatPhoto } from '../types';
@@ -65,7 +69,6 @@ export const CatDetailPage: React.FC = () => {
 
       setCat(foundCat);
 
-      // Load sightings, feeding logs, and all cat photos in parallel
       const [sightingsList, feedingList, photosList] = await Promise.all([
         sightingRepository.getByCatId(catId),
         feedingLogRepository.getByCatId(catId),
@@ -86,7 +89,6 @@ export const CatDetailPage: React.FC = () => {
     loadCatData();
   }, [loadCatData]);
 
-  // Clear flash message after 4s
   useEffect(() => {
     if (feedbackMsg) {
       const timer = setTimeout(() => setFeedbackMsg(null), 4000);
@@ -101,7 +103,9 @@ export const CatDetailPage: React.FC = () => {
     try {
       await catRepository.deleteWithCascade(catId);
       navigate('/catalog', {
-        state: { flashMessage: `Profil "${cat?.name || 'Kucing'}" dan semua pertemuannya telah dihapus.` },
+        state: {
+          flashMessage: `Profil "${cat?.name || 'Kucing'}" dan semua pertemuannya telah dihapus.`,
+        },
       });
     } catch {
       alert('Gagal menghapus profil kucing. Silakan coba lagi.');
@@ -145,20 +149,17 @@ export const CatDetailPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="page-container" style={{ textAlign: 'center', padding: 'var(--space-12) 0', color: 'var(--color-text-muted)' }}>
-        <div
-          className="spin"
-          style={{
-            width: 28,
-            height: 28,
-            border: '3px solid var(--color-border)',
-            borderTopColor: 'var(--color-primary)',
-            borderRadius: '50%',
-            margin: '0 auto var(--space-3)',
-          }}
-          role="status"
-          aria-label="Memuat profil kucing"
-        />
+      <div
+        className="page-container detail-page-container"
+        role="status"
+        aria-label="Memuat profil kucing"
+      >
+        <div className="skeleton-shimmer detail-hero-box" style={{ height: 320 }} />
+        <div className="form-card">
+          <div className="skeleton-shimmer skeleton-line skeleton-line--title" />
+          <div className="skeleton-shimmer skeleton-line skeleton-line--sub" />
+          <div className="skeleton-shimmer skeleton-line skeleton-line--meta" />
+        </div>
       </div>
     );
   }
@@ -178,44 +179,47 @@ export const CatDetailPage: React.FC = () => {
   }
 
   const latestSighting = sightings.length > 0 ? sightings[0] : null;
-  const badge = cat.badgeRing ? resolveBadge(cat.badgeRing) : null;
+  const badge = cat.badgeRing ? resolveBadge(cat.badgeRing) : resolveBadge('oopsie');
 
   return (
-    <div className="page-container" id="cat-detail-page" style={{ paddingBottom: 'calc(var(--bottom-nav-height) + 24px)' }}>
-      {/* Top Header Navigation */}
-      <div className="page-header-row" style={{ alignItems: 'center' }}>
+    <div
+      className="page-container detail-page-container"
+      id="cat-detail-page"
+      style={{ paddingBottom: 'calc(var(--bottom-nav-height) + 28px)' }}
+    >
+      {/* Top Dedicated Navigation Bar */}
+      <div className="detail-top-bar">
         <button
           type="button"
-          className="btn-secondary"
+          className="btn-secondary detail-nav-pill"
           onClick={() => navigate('/catalog')}
           aria-label="Kembali ke Katalog"
-          style={{ padding: '6px 12px' }}
           id="btn-cat-detail-back"
         >
-          <ArrowLeft size={16} />
-          <span>Kembali</span>
+          <ArrowLeft size={15} />
+          <span>Katalog</span>
         </button>
 
-        <h1 className="page-title" style={{ fontSize: 'var(--font-size-md)', margin: 0, fontWeight: 700 }}>
-          Detail Kucing
-        </h1>
+        <span className="eyebrow-tag" style={{ margin: 0 }}>
+          Profil Kucing
+        </span>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="detail-top-actions">
           <Link
             to={`/cats/${cat.id}/edit`}
-            className="btn-secondary"
-            style={{ padding: '6px 10px' }}
+            className="btn-secondary detail-icon-btn"
             id="btn-edit-cat"
             aria-label="Edit kucing"
+            title="Edit profil"
           >
             <Edit3 size={15} />
           </Link>
           <button
             type="button"
-            className="btn-secondary"
-            style={{ padding: '6px 10px', color: 'var(--color-danger)' }}
+            className="btn-secondary detail-icon-btn detail-icon-btn--danger"
             onClick={() => setShowDeleteModal(true)}
             aria-label="Hapus profil kucing"
+            title="Hapus profil"
             id="btn-delete-cat"
           >
             <Trash2 size={15} />
@@ -231,7 +235,7 @@ export const CatDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* Hero Photo Section: Minimalist Gallery Slider ("gulir-gulir") */}
+      {/* Hero Photo Section: Double-Bezel Gallery Slider */}
       <div className="detail-hero-box detail-gallery-container" id="cat-photo-gallery">
         {orderedPhotos.length > 0 ? (
           <>
@@ -252,7 +256,10 @@ export const CatDetailPage: React.FC = () => {
 
                     {/* Badge Character Stamp on Cover Photo */}
                     {isCover && badge && (
-                      <div className="detail-hero-badge-stamp" title={`Badge: ${badge.nickname}`}>
+                      <div
+                        className="detail-hero-badge-stamp"
+                        title={`Badge: ${badge.nickname} (${badge.epithet})`}
+                      >
                         <img
                           src={badge.assetPath}
                           alt={badge.nickname}
@@ -264,7 +271,7 @@ export const CatDetailPage: React.FC = () => {
                     {/* Sampul Tag on Cover Slide */}
                     {isCover && orderedPhotos.length > 1 && (
                       <div className="detail-hero-cover-tag">
-                        <Star size={9} fill="currentColor" />
+                        <Star size={10} fill="currentColor" />
                         <span>Sampul</span>
                       </div>
                     )}
@@ -273,10 +280,8 @@ export const CatDetailPage: React.FC = () => {
               })}
             </div>
 
-            {/* Slider Controls & Indicators if multiple photos exist */}
             {orderedPhotos.length > 1 && (
               <>
-                {/* Minimalist Edge Navigation Arrows */}
                 {activePhotoIndex > 0 && (
                   <button
                     type="button"
@@ -299,12 +304,12 @@ export const CatDetailPage: React.FC = () => {
                   </button>
                 )}
 
-                {/* Floating Photo Counter Capsule */}
                 <div className="detail-gallery-counter">
-                  <span>{activePhotoIndex + 1} / {orderedPhotos.length}</span>
+                  <span>
+                    {activePhotoIndex + 1} / {orderedPhotos.length}
+                  </span>
                 </div>
 
-                {/* Minimalist Pagination Dots */}
                 <div className="detail-gallery-dots">
                   {orderedPhotos.map((_, dotIdx) => (
                     <button
@@ -320,7 +325,6 @@ export const CatDetailPage: React.FC = () => {
             )}
           </>
         ) : (
-          /* Fallback if no photos list found but coverPhotoId exists or empty */
           <div className="detail-gallery-slide">
             <CatPhotoImg
               photoId={cat.coverPhotoId}
@@ -340,11 +344,16 @@ export const CatDetailPage: React.FC = () => {
         )}
       </div>
 
-      {/* Profile Header & Attributes */}
-      <div className="form-card" style={{ gap: 'var(--space-3)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 className="page-title" style={{ fontSize: 'var(--font-size-2xl)', margin: 0 }}>{cat.name}</h2>
-          <span className="brand-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+      {/* Editorial Identity & Attributes Card */}
+      <div className="form-card detail-identity-card">
+        <div className="detail-identity-top">
+          <div>
+            <span className={`detail-archetype-pill badge-pastel-${badge.id}`}>
+              {badge.nickname} · {badge.epithet}
+            </span>
+            <h1 className="detail-cat-name">{cat.name}</h1>
+          </div>
+          <span className="brand-badge tabular-nums">
             <MapPin size={11} />
             <span>{sightings.length} pertemuan</span>
           </span>
@@ -352,9 +361,7 @@ export const CatDetailPage: React.FC = () => {
 
         <div className="detail-badge-row">
           {cat.breed && cat.breed !== 'unknown' && (
-            <span className="detail-tag">
-              {formatBreedLabel(cat.breed)}
-            </span>
+            <span className="detail-tag">{formatBreedLabel(cat.breed)}</span>
           )}
           {cat.coatColors && cat.coatColors.length > 0 && (
             <span className="detail-tag detail-tag-accent">
@@ -368,42 +375,46 @@ export const CatDetailPage: React.FC = () => {
           )}
         </div>
 
-        {cat.notes && (
-          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-primary)', lineHeight: 1.5, margin: '2px 0' }}>
-            {cat.notes}
-          </p>
-        )}
+        {cat.notes && <blockquote className="detail-notes-quote">{cat.notes}</blockquote>}
+
+        <p className="detail-personality-caption">{badge.description}</p>
 
         {/* Latest Encounter Summary */}
         {latestSighting && (
-          <div style={{ marginTop: 'var(--space-1)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-border-subtle)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--color-text-primary)' }}>
-              <MapPin size={13} style={{ color: 'var(--color-primary)' }} />
+          <div className="detail-latest-strip">
+            <div className="detail-latest-loc">
+              <MapPin size={13} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
               <span>{latestSighting.locationName || 'Lokasi tercatat'}</span>
             </div>
-            <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', paddingLeft: '18px' }}>
+            <span className="detail-latest-time tabular-nums">
               Terakhir: {formatIndonesianDateTime(latestSighting.spottedAt)}
             </span>
           </div>
         )}
 
-        {/* Primary CTA: Add Sighting */}
+        {/* Primary Button-in-Button Island CTA */}
         <Link
           to={`/cats/${cat.id}/sightings/new`}
-          className="btn-primary"
+          className="btn-primary btn-island"
           id="btn-add-sighting-cta"
-          style={{ width: '100%', marginTop: 'var(--space-2)' }}
+          style={{ width: '100%', marginTop: 'var(--space-1)' }}
         >
-          <Plus size={18} />
           <span>Catat Pertemuan Baru</span>
+          <span className="btn-icon-disk" aria-hidden="true">
+            <Plus size={16} />
+          </span>
         </Link>
       </div>
 
-      {/* Encounter History Section */}
+      {/* Encounter History Timeline */}
       <div className="timeline-card" id="cat-encounter-history">
-        <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-bold)' }}>
-          Riwayat Pertemuan ({sightings.length})
-        </h2>
+        <div className="section-header-inline">
+          <div>
+            <span className="eyebrow-tag">Jurnal Lapangan</span>
+            <h2 className="section-card-title">Riwayat Pertemuan</h2>
+          </div>
+          <span className="section-count-pill tabular-nums">{sightings.length}</span>
+        </div>
 
         {sightings.length > 0 ? (
           <div className="timeline-list" id="sightings-list">
@@ -411,7 +422,11 @@ export const CatDetailPage: React.FC = () => {
               const formattedDate = formatIndonesianDateTime(sighting.spottedAt);
 
               return (
-                <div key={sighting.id} className="timeline-item" id={`sighting-item-${sighting.id}`}>
+                <div
+                  key={sighting.id}
+                  className="timeline-item"
+                  id={`sighting-item-${sighting.id}`}
+                >
                   {sighting.photoId ? (
                     <div className="timeline-thumb">
                       <CatPhotoImg
@@ -423,33 +438,20 @@ export const CatDetailPage: React.FC = () => {
                   ) : (
                     <div
                       className="timeline-thumb timeline-thumb-placeholder"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: 'var(--color-surface-subtle)',
-                        color: 'var(--color-text-subtle)',
-                      }}
                       aria-label="Tidak ada foto"
                     >
-                      <Camera size={22} style={{ opacity: 0.45 }} />
+                      <Camera size={20} style={{ opacity: 0.45 }} />
                     </div>
                   )}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
-                    <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
-                      {formattedDate}
-                    </span>
+                  <div className="timeline-item-content">
+                    <span className="timeline-date tabular-nums">{formattedDate}</span>
                     {sighting.locationName && (
-                      <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                      <span className="timeline-location">
                         <MapPin size={11} />
                         <span>{sighting.locationName}</span>
                       </span>
                     )}
-                    {sighting.notes && (
-                      <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-                        {sighting.notes}
-                      </p>
-                    )}
+                    {sighting.notes && <p className="timeline-notes">{sighting.notes}</p>}
                   </div>
                 </div>
               );
@@ -465,24 +467,40 @@ export const CatDetailPage: React.FC = () => {
       {/* Feeding History Section */}
       {feedingLogs.length > 0 && (
         <div className="timeline-card">
-          <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-bold)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Utensils size={16} />
-            <span>Riwayat Pemberian Makan ({feedingLogs.length})</span>
-          </h2>
+          <div className="section-header-inline">
+            <div>
+              <span className="eyebrow-tag">Catatan Nutrisi</span>
+              <h2 className="section-card-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Utensils size={15} style={{ color: 'var(--color-primary)' }} />
+                <span>Riwayat Pemberian Makan</span>
+              </h2>
+            </div>
+            <span className="section-count-pill tabular-nums">{feedingLogs.length}</span>
+          </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <div className="feeding-log-list">
             {feedingLogs.map((log) => {
-              const foodName = log.foodType === 'wet_food' ? 'Makanan Basah' : log.foodType === 'dry_food' ? 'Makanan Kering' : log.foodType === 'treat' ? 'Camilan' : 'Lainnya';
+              const foodName =
+                log.foodType === 'wet_food'
+                  ? 'Makanan Basah'
+                  : log.foodType === 'dry_food'
+                  ? 'Makanan Kering'
+                  : log.foodType === 'treat'
+                  ? 'Camilan'
+                  : 'Lainnya';
               return (
-                <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--color-border-subtle)', fontSize: 'var(--font-size-xs)' }}>
-                  <div>
-                    <span style={{ fontWeight: 600 }}>
-                      {foodName}
-                    </span>
-                    {log.notes && <span style={{ color: 'var(--color-text-muted)', marginLeft: '6px' }}>— {log.notes}</span>}
+                <div key={log.id} className="feeding-log-row">
+                  <div className="feeding-log-left">
+                    <span className="feeding-type-pill">{foodName}</span>
+                    {log.notes && <span className="feeding-log-note">{log.notes}</span>}
                   </div>
-                  <span style={{ color: 'var(--color-text-subtle)' }}>
-                    {new Date(log.fedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  <span className="feeding-log-time tabular-nums">
+                    {new Date(log.fedAt).toLocaleDateString('id-ID', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </span>
                 </div>
               );
@@ -493,19 +511,27 @@ export const CatDetailPage: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
+        >
           <div className="modal-card">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-danger)' }}>
-              <AlertTriangle size={22} />
-              <h3 id="modal-title" style={{ fontSize: 'var(--font-size-md)', color: 'var(--color-danger)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--color-danger)' }}>
+              <div className="settings-icon-box danger" style={{ width: 36, height: 36 }}>
+                <AlertTriangle size={18} />
+              </div>
+              <h3 id="modal-title" style={{ fontSize: 'var(--font-size-md)', color: 'var(--color-text-primary)' }}>
                 Hapus Profil Kucing?
               </h3>
             </div>
-            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
+            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', lineHeight: 1.55 }}>
               Apakah Anda yakin ingin menghapus <strong>{cat.name}</strong> secara permanen?
-              Tindakan ini akan menghapus semua {sightings.length} pertemuan, foto, dan catatan makanan yang terkait dari penyimpanan lokal Anda.
+              Tindakan ini akan menghapus semua {sightings.length} pertemuan, foto, dan catatan
+              makanan yang terkait dari penyimpanan lokal Anda.
             </p>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: 'var(--space-2)' }}>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: 'var(--space-1)' }}>
               <button
                 type="button"
                 className="btn-secondary"
