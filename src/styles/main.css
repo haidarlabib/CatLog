@@ -4475,7 +4475,10 @@ h1, h2, h3 {
   pointer-events: none;
 }
 
-.oyen-perch-hitbox {
+.oyen-perch-hitbox,
+.oyen-basecamp-hitbox,
+.oyen-runner-hitbox,
+.oyen-guest-runner-hitbox {
   position: absolute;
   top: 0;
   left: 0;
@@ -4488,10 +4491,13 @@ h1, h2, h3 {
   pointer-events: none;
   cursor: pointer;
   z-index: 5;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
-.oyen-perch-hitbox:focus {
+.oyen-perch-hitbox:focus,
+.oyen-basecamp-hitbox:focus,
+.oyen-runner-hitbox:focus {
   outline: none;
 }
 
