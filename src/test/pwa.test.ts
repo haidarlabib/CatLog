@@ -110,4 +110,20 @@ describe('PWA Configuration & Offline Operation (Milestone 5)', () => {
       reopenedDb.close();
     }
   });
+
+  it('validates iOS iPhone safe-area, full-bleed status-bar, and cream theme-color configuration', () => {
+    const htmlContent = fs.readFileSync(path.resolve('index.html'), 'utf-8');
+    expect(htmlContent).toContain('viewport-fit=cover');
+    expect(htmlContent).toContain('name="apple-mobile-web-app-status-bar-style" content="black-translucent"');
+    expect(htmlContent).toContain('name="theme-color" content="#FBF8F2"');
+
+    const tokensContent = fs.readFileSync(path.resolve('src', 'styles', 'tokens.css'), 'utf-8');
+    expect(tokensContent).toContain('--safe-area-top: env(safe-area-inset-top, 0px);');
+    expect(tokensContent).toContain('--header-height: calc(var(--header-base-height) + var(--safe-area-top));');
+
+    const viteConfigContent = fs.readFileSync(path.resolve('vite.config.ts'), 'utf-8');
+    expect(viteConfigContent).toContain("theme_color: '#FBF8F2'");
+    expect(viteConfigContent).toContain("background_color: '#FBF8F2'");
+  });
 });
+

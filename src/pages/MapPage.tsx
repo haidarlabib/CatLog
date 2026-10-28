@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import L from 'leaflet';
 import { 
   Plus,
@@ -175,6 +175,7 @@ function createStackedClusterIcon(group: MarkerGroup, isSelected = false): L.Div
 
 export const MapPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { profile } = useUserProfile();
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -260,21 +261,78 @@ export const MapPage: React.FC = () => {
       }));
 
       setMarkersData(enriched);
+
+      const navState = location.state as {
+        focusLat?: number | null;
+        focusLng?: number | null;
+        focusSightingId?: string | null;
+      } | null;
+
+      if (navState?.focusSightingId) {
+        const match = enriched.find((m) => m.sightingId === navState.focusSightingId);
+        if (match) {
+          setSelectedMarker(match);
+        }
+      }
     } catch {
       setErrorMsg('Gagal memuat lokasi kucing ke peta.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [location.state]);
+
+  // Handle navigation focus from CatDetailPage or other pages
+  useEffect(() => {
+    const navState = location.state as {
+      focusLat?: number | null;
+      focusLng?: number | null;
+      focusSightingId?: string | null;
+    } | null;
+
+    if (!navState) return;
+
+    if (
+      navState.focusLat != null &&
+      navState.focusLng != null &&
+      isValidCoordinates(navState.focusLat, navState.focusLng) &&
+      mapInstanceRef.current
+    ) {
+      mapInstanceRef.current.flyTo([navState.focusLat, navState.focusLng], ZOOM_NEARBY, {
+        duration: 0.8,
+      });
+    }
+
+    if (navState.focusSightingId && markersData.length > 0) {
+      const match = markersData.find((m) => m.sightingId === navState.focusSightingId);
+      if (match) {
+        setSelectedMarker(match);
+      }
+    }
+  }, [location.state, markersData]);
 
   // 2. Initialize Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    const initialCenter = (cachedUserLocation && isValidCoordinates(cachedUserLocation.latitude, cachedUserLocation.longitude))
+    const navState = location.state as {
+      focusLat?: number | null;
+      focusLng?: number | null;
+      focusSightingId?: string | null;
+    } | null;
+
+    const hasFocusCoords =
+      navState?.focusLat != null &&
+      navState?.focusLng != null &&
+      isValidCoordinates(navState.focusLat, navState.focusLng);
+
+    const initialCenter = hasFocusCoords
+      ? [navState!.focusLat!, navState!.focusLng!]
+      : (cachedUserLocation && isValidCoordinates(cachedUserLocation.latitude, cachedUserLocation.longitude))
       ? [cachedUserLocation.latitude, cachedUserLocation.longitude]
       : (cachedMapViewState?.center ?? defaultMapConfig.defaultCenter);
-    const initialZoom = cachedMapViewState?.zoom ?? ZOOM_OVERVIEW;
+    const initialZoom = hasFocusCoords
+      ? ZOOM_NEARBY
+      : (cachedMapViewState?.zoom ?? ZOOM_OVERVIEW);
 
     const map = L.map(mapContainerRef.current, {
       center: initialCenter as L.LatLngExpression,

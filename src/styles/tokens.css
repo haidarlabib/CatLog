@@ -117,6 +117,10 @@
   --max-width-mobile: 430px;
   --max-width-app: 860px;
   --bottom-nav-height: 74px;
-  --header-height: 62px;
+  --header-base-height: 62px;
+  --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --header-height: calc(var(--header-base-height) + var(--safe-area-top));
 }

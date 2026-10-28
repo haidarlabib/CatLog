@@ -13,6 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Star,
+  Cat as CatIcon,
+  X,
 } from 'lucide-react';
 import {
   catRepository,
@@ -51,6 +53,19 @@ export const CatDetailPage: React.FC = () => {
   // Delete Confirmation Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Full-size uncropped photo lightbox state
+  const [fullViewIndex, setFullViewIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFullViewIndex(null);
+    };
+    if (fullViewIndex !== null) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fullViewIndex]);
 
   const loadCatData = useCallback(async () => {
     if (!catId) {
@@ -145,6 +160,43 @@ export const CatDetailPage: React.FC = () => {
       behavior: 'smooth',
     });
     setActivePhotoIndex(clamped);
+  };
+
+  // Pointer drag to swipe on desktop mouse alongside native touch swipe
+  const isDraggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const startScrollLeftRef = useRef(0);
+  const hasMovedRef = useRef(false);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    isDraggingRef.current = true;
+    hasMovedRef.current = false;
+    startXRef.current = e.clientX;
+    startScrollLeftRef.current = sliderRef.current?.scrollLeft || 0;
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current || !sliderRef.current) return;
+    const dx = e.clientX - startXRef.current;
+    if (Math.abs(dx) > 4) {
+      hasMovedRef.current = true;
+    }
+    sliderRef.current.scrollLeft = startScrollLeftRef.current - dx;
+  };
+
+  const handlePointerUp = () => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    const slider = sliderRef.current;
+    if (!slider) return;
+    const width = slider.clientWidth;
+    if (width > 0 && hasMovedRef.current) {
+      const targetIndex = Math.max(
+        0,
+        Math.min(Math.round(slider.scrollLeft / width), orderedPhotos.length - 1)
+      );
+      scrollToSlide(targetIndex);
+    }
   };
 
   if (isLoading) {
@@ -243,30 +295,30 @@ export const CatDetailPage: React.FC = () => {
               ref={sliderRef}
               className="detail-gallery-slider"
               onScroll={handleSliderScroll}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp}
             >
               {orderedPhotos.map((photo, index) => {
                 const isCover = photo.id === cat.coverPhotoId;
                 return (
-                  <div key={photo.id} className="detail-gallery-slide">
+                  <div
+                    key={photo.id}
+                    className="detail-gallery-slide"
+                    onClick={() => {
+                      if (!hasMovedRef.current) {
+                        setFullViewIndex(index);
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
+                    title="Ketuk untuk melihat foto asli penuh tanpa crop"
+                  >
                     <CatPhotoImg
                       photoId={photo.id}
                       alt={`Foto ${cat.name} ${index + 1}`}
                       className="detail-hero-img"
                     />
-
-                    {/* Badge Character Stamp on Cover Photo */}
-                    {isCover && badge && (
-                      <div
-                        className="detail-hero-badge-stamp"
-                        title={`Badge: ${badge.nickname} (${badge.epithet})`}
-                      >
-                        <img
-                          src={badge.assetPath}
-                          alt={badge.nickname}
-                          className="detail-hero-badge-img"
-                        />
-                      </div>
-                    )}
 
                     {/* Sampul Tag on Cover Slide */}
                     {isCover && orderedPhotos.length > 1 && (
@@ -325,21 +377,17 @@ export const CatDetailPage: React.FC = () => {
             )}
           </>
         ) : (
-          <div className="detail-gallery-slide">
+          <div
+            className="detail-gallery-slide"
+            onClick={() => setFullViewIndex(0)}
+            style={{ cursor: 'pointer' }}
+            title="Ketuk untuk melihat foto asli penuh tanpa crop"
+          >
             <CatPhotoImg
               photoId={cat.coverPhotoId}
               alt={`Foto ${cat.name}`}
               className="detail-hero-img"
             />
-            {badge && (
-              <div className="detail-hero-badge-stamp" title={`Badge: ${badge.nickname}`}>
-                <img
-                  src={badge.assetPath}
-                  alt={badge.nickname}
-                  className="detail-hero-badge-img"
-                />
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -382,10 +430,24 @@ export const CatDetailPage: React.FC = () => {
         {/* Latest Encounter Summary */}
         {latestSighting && (
           <div className="detail-latest-strip">
-            <div className="detail-latest-loc">
+            <button
+              type="button"
+              className="detail-latest-loc-btn"
+              onClick={() => {
+                navigate('/', {
+                  state: {
+                    focusLat: latestSighting.latitude,
+                    focusLng: latestSighting.longitude,
+                    focusSightingId: latestSighting.id,
+                  },
+                });
+              }}
+              title="Lihat di peta MyWorld"
+              aria-label={`Buka lokasi ${latestSighting.locationName || 'pertemuan'} di peta MyWorld`}
+            >
               <MapPin size={13} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
               <span>{latestSighting.locationName || 'Lokasi tercatat'}</span>
-            </div>
+            </button>
             <span className="detail-latest-time tabular-nums">
               Terakhir: {formatIndonesianDateTime(latestSighting.spottedAt)}
             </span>
@@ -409,10 +471,10 @@ export const CatDetailPage: React.FC = () => {
       {/* Encounter History Timeline */}
       <div className="timeline-card" id="cat-encounter-history">
         <div className="section-header-inline">
-          <div>
-            <span className="eyebrow-tag">Jurnal Lapangan</span>
-            <h2 className="section-card-title">Riwayat Pertemuan</h2>
-          </div>
+          <h2 className="section-card-title">
+            <CatIcon size={18} style={{ color: 'var(--color-primary)' }} />
+            <span>Riwayat Ketemuan</span>
+          </h2>
           <span className="section-count-pill tabular-nums">{sightings.length}</span>
         </div>
 
@@ -446,10 +508,24 @@ export const CatDetailPage: React.FC = () => {
                   <div className="timeline-item-content">
                     <span className="timeline-date tabular-nums">{formattedDate}</span>
                     {sighting.locationName && (
-                      <span className="timeline-location">
+                      <button
+                        type="button"
+                        className="timeline-location-btn"
+                        onClick={() => {
+                          navigate('/', {
+                            state: {
+                              focusLat: sighting.latitude,
+                              focusLng: sighting.longitude,
+                              focusSightingId: sighting.id,
+                            },
+                          });
+                        }}
+                        title="Lihat di peta MyWorld"
+                        aria-label={`Buka lokasi ${sighting.locationName} di peta MyWorld`}
+                      >
                         <MapPin size={11} />
                         <span>{sighting.locationName}</span>
-                      </span>
+                      </button>
                     )}
                     {sighting.notes && <p className="timeline-notes">{sighting.notes}</p>}
                   </div>
@@ -550,6 +626,83 @@ export const CatDetailPage: React.FC = () => {
                 {isDeleting ? 'Menghapus...' : 'Hapus Permanen'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox / Modal Foto Asli Penuh Tanpa Crop */}
+      {fullViewIndex !== null && (
+        <div
+          className="photo-lightbox-backdrop"
+          onClick={() => setFullViewIndex(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Lihat foto penuh tanpa crop"
+        >
+          <div className="photo-lightbox-header" onClick={(e) => e.stopPropagation()}>
+            <span className="photo-lightbox-counter">
+              {orderedPhotos.length > 0 ? `${fullViewIndex + 1} / ${orderedPhotos.length}` : '1 / 1'}
+            </span>
+            <button
+              type="button"
+              className="photo-lightbox-close-btn"
+              onClick={() => setFullViewIndex(null)}
+              aria-label="Tutup foto penuh"
+              id="btn-close-lightbox"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="photo-lightbox-body" onClick={(e) => e.stopPropagation()}>
+            {orderedPhotos.length > 0 && orderedPhotos[fullViewIndex] ? (
+              <CatPhotoImg
+                photoId={orderedPhotos[fullViewIndex].id}
+                alt={`Foto asli ${cat.name}`}
+                crop={{ zoom: 1.0, focalX: 0.5, focalY: 0.5 }}
+                className="photo-lightbox-img"
+              />
+            ) : (
+              <CatPhotoImg
+                photoId={cat.coverPhotoId}
+                alt={`Foto asli ${cat.name}`}
+                crop={{ zoom: 1.0, focalX: 0.5, focalY: 0.5 }}
+                className="photo-lightbox-img"
+              />
+            )}
+
+            {orderedPhotos.length > 1 && (
+              <>
+                {fullViewIndex > 0 && (
+                  <button
+                    type="button"
+                    className="photo-lightbox-nav photo-lightbox-prev"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFullViewIndex(fullViewIndex - 1);
+                    }}
+                    aria-label="Foto sebelumnya"
+                    id="btn-lightbox-prev"
+                  >
+                    <ChevronLeft size={22} />
+                  </button>
+                )}
+                {fullViewIndex < orderedPhotos.length - 1 && (
+                  <button
+                    type="button"
+                    className="photo-lightbox-nav photo-lightbox-next"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFullViewIndex(fullViewIndex + 1);
+                    }}
+                    aria-label="Foto selanjutnya"
+                    id="btn-lightbox-next"
+                  >
+                    <ChevronRight size={22} />
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}

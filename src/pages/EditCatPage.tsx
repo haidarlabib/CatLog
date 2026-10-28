@@ -358,6 +358,16 @@ export const EditCatPage: React.FC = () => {
       return;
     }
 
+    if (cleanName.length > 15) {
+      setErrorMsg('Nama kucing maksimal 15 karakter.');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9 ]+$/.test(cleanName)) {
+      setErrorMsg('Nama kucing hanya boleh mengandung huruf, angka, dan spasi.');
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMsg(null);
 
@@ -554,9 +564,13 @@ export const EditCatPage: React.FC = () => {
             id="edit-cat-name"
             className="form-input"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            maxLength={15}
+            onChange={(e) => setName(e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').slice(0, 15))}
             required
           />
+          <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block', marginTop: '4px' }}>
+            Maks. 15 karakter (hanya huruf, angka, dan spasi)
+          </span>
         </div>
 
         {/* Ras / Jenis */}
